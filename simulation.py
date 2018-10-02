@@ -9,8 +9,9 @@
 #       Resoruce: Amount and location of Wall and roof top windows
 #
 import numpy as np
-import matplotlib.pyplot as plt
 from deap import base, creator, algorithms, benchmarks, tools
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 import random
 
@@ -113,40 +114,70 @@ def decode(individual):
         for x in range(width):
             bulbs[x,y] = individual[y*width+x]
     return bulbs
-        
-if __name__ == "__main__": 
-    pop = toolbox.population(n=1000)
-  
-    fit = 0.0
-    while (fit < 0.95):
-  
-        algorithms.eaMuPlusLambda (
+ 
+fig=plt.figure(figsize=(1, 2))
+
+fig.add_subplot(121)
+plt.imshow(presence, cmap='gray', interpolation='nearest', vmin=0, vmax=1)
+
+fig.add_subplot(122)
+im = plt.imshow(bulbs, cmap='gray', interpolation='bilinear', animated=True, vmin=0, vmax=1)
+pop = toolbox.population(n=1000)
+
+def updatefig(*args):
+    algorithms.eaMuPlusLambda (
             pop, toolbox, 
             400, 100, #parents, children
             0.8, 0.2, #probabilities
             1) #iterations
-    
-        top = sorted(pop, key=lambda x:x.fitness.values[0])[-1]
-        fit = top.fitness.values[0]
-        print ('fitness: {}'.format(fit))
- 
-    print (top)
+
+    top = sorted(pop, key=lambda x:x.fitness.values[0])[-1]
+    fit = top.fitness.values[0]
+    print ('fitness-: {}'.format(fit))
+        
+    im.set_data(decode(top))
+    #im.set_cmap("gray")
+    #im.update()
+    return im,
+
+ani = animation.FuncAnimation(fig, updatefig, interval=50, blit=True)
+plt.show()
+
+#if __name__ == "__main__": 
+#    
+#    pop = toolbox.population(n=1000)
+#  
+#    fit = 0.0
+#    while (fit < 0.95):
+#  
+#        algorithms.eaMuPlusLambda (
+#            pop, toolbox, 
+#            400, 100, #parents, children
+#            0.8, 0.2, #probabilities
+#            1) #iterations
+#    
+#        top = sorted(pop, key=lambda x:x.fitness.values[0])[-1]
+#        fit = top.fitness.values[0]
+#        print ('fitness: {}'.format(fit))
+#        
+#    
+#    print (top)
 #------- visualization
 
-fig=plt.figure(figsize=(2, 2))
+#fig=plt.figure(figsize=(2, 2))
+#
+#fig.add_subplot(221)
+#plt.imshow(room, cmap='gray', interpolation='nearest')
+#
+#fig.add_subplot(222)
+#plt.imshow(environment, cmap='gray', interpolation='nearest')
+#
+#fig.add_subplot(223)
+#plt.imshow(decode(top), cmap='gray', interpolation='nearest')
+#
+#fig.add_subplot(224)
+#plt.imshow(presence, cmap='gray', interpolation='nearest')
 
-fig.add_subplot(221)
-plt.imshow(room, cmap='gray', interpolation='nearest')
 
-fig.add_subplot(222)
-plt.imshow(environment, cmap='gray', interpolation='nearest')
-
-fig.add_subplot(223)
-plt.imshow(decode(top), cmap='gray', interpolation='nearest')
-
-fig.add_subplot(224)
-plt.imshow(presence, cmap='gray', interpolation='nearest')
-
-plt.show()
 
 
