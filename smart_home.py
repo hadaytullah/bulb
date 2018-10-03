@@ -30,8 +30,29 @@ class SmartHome(Home):
     def __init__(self, w, h):
         super().__init__(w,h)
         self.scenario = Scenario()
+        self.init_deap()
+        self.init_figures()
+        
+        
+
+        
+        self.pop = self.toolbox.population(n=1000)
+    
+    def init_figures(self):
         self.presence, self.bulbs = self.scenario.diagonal(self.width, self.height)
         
+        self.fig = plt.figure(figsize=(1, 3))
+        
+        self.fig.add_subplot(131)
+        plt.imshow(self.presence, cmap='gray', interpolation='nearest', vmin=0, vmax=1)
+        
+        self.fig.add_subplot(132)
+        plt.imshow(self.bulbs, cmap='gray', interpolation='nearest', vmin=-1, vmax=0)
+        
+        self.fig.add_subplot(133)
+        self.im = plt.imshow(self.bulbs, cmap='gray', interpolation='bilinear', animated=True, vmin=0, vmax=1)
+        
+    def init_deap(self):
         creator.create("FitnessMax", base.Fitness, weights=(1.0,))
         creator.create("Individual", list, fitness=creator.FitnessMax)
 
@@ -58,19 +79,9 @@ class SmartHome(Home):
                            self.toolbox.individual)
         self.toolbox.register("mate", tools.cxTwoPoint)
         self.toolbox.register("select", tools.selBest)
-        self.toolbox.register("evaluate", self.evaluateInd2)
+        self.toolbox.register("evaluate", self.evaluateInd4)
         self.toolbox.register("mutate", self.myMutation)
 
-        self.fig = plt.figure(figsize=(1, 2))
-
-        self.fig.add_subplot(121)
-        plt.imshow(self.presence, cmap='gray', interpolation='nearest', vmin=0, vmax=1)
-
-        self.fig.add_subplot(122)
-        self.im = plt.imshow(self.bulbs, cmap='gray', interpolation='bilinear', animated=True, vmin=0, vmax=1)
-        
-        self.pop = self.toolbox.population(n=1000)
-        
     def fitness(self, individual, data):
         print (data)
         print (individual)
@@ -105,9 +116,75 @@ class SmartHome(Home):
                 if individual[y*self.width+x] == self.presence[x,y]:
                     if self.bulbs[x,y] > -1:
                         match += 1
+                    else:
+                        match -= 1 #penalty
         match_percentage = match / (self.width * self.height) 
         return (float(match_percentage),)
 
+    def evaluateInd3(self, individual):
+        score = 0
+        #for selected, bulbs in zip(individual, data):
+            #if selected:
+        for y in range(self.height): # top left is (X=0,Y=0)
+            for x in range(self.width):
+                
+                if individual[y*self.width+x]>0:
+                    #if self.presence_in_radius(1, x, y):
+                    presence_score = self.presence_in_radius(1, x, y)
+                    if self.bulbs[x,y] > -1 and presence_score > 0:
+                        score += self.presence_in_radius(1, x, y)
+                    else:
+                        score -= 1 #penalty for using a broken bulb
+        return (float(score),)
+    
+        #match_percentage = match / (self.width * self.height) 
+        #return (float(match_percentage),)
+    def presence_in_radius (self, radius, x, y):
+        block = ((x-1, y-1), (x, y-1), (x+1,y-1), (x+1, y), (x+1, y+1), (x, y+1), (x-1, y+1), (x-1, y)) # starts from left top
+        
+        presence_count = 0
+        for point in block:
+            if point[0] in range(self.width):
+                if point[1] in range(self.height): 
+                    if self.presence[point[0], point[1]] > 0: #someone present
+                        presence_count += 1
+                
+        return presence_count
+ 
+    def evaluateInd4(self, individual):
+        score = 0
+        #for selected, bulbs in zip(individual, data):
+            #if selected:
+        for y in range(self.height): # top left is (X=0,Y=0)
+            for x in range(self.width):
+                
+                if individual[y*self.width+x]>0:
+                    #if self.presence_in_radius(1, x, y):
+                    presence_score = self.presence_in_radius2(1, x, y, individual)
+                    if self.bulbs[x,y] > -1 and presence_score > 0:
+                        score += self.presence_in_radius(1, x, y)
+                    else:
+                        score -= 1 #penalty for using a broken bulb
+        return (float(score),)
+    
+    def presence_in_radius2 (self, radius, x, y, individual):
+        block = ((x-1, y-1), (x, y-1), (x+1,y-1), (x+1, y), (x+1, y+1), (x, y+1), (x-1, y+1), (x-1, y)) # starts from left top
+        
+        presence_count = 0
+        
+        if self.presence[x,y] > 0:
+            presence_count += 50 #award for presence under the bulb
+            print ('+50')
+        
+        for point in block:
+            if point[0] in range(self.width):
+                if point[1] in range(self.height): 
+                    if self.presence[point[0], point[1]] > 0 and individual[point[1]*self.width+point[0]] < 1:#someone present in radius and that area is dark
+                        presence_count += 1
+                
+        return presence_count
+        
+        
     def myMutation(self, individual):
         luminosity = self.decode(individual)
         
