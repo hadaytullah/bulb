@@ -31,7 +31,8 @@ class SmartHome(Home):
         super().__init__(w,h)
         self.scenario = Scenario()
         #self.presence, self.bulbs = self.scenario.diagonal(self.width, self.height)
-        self.presence, self.bulbs = self.scenario.stripes(self.width, self.height)
+        #self.presence, self.bulbs = self.scenario.stripes(self.width, self.height)
+        self.presence, self.bulbs = self.scenario.corners(self.width, self.height)
 
         self.init_deap()
         self.init_figures()

@@ -25,6 +25,18 @@ class Scenario:
 
         return presence, bulbs
 
+    def corners(self, w, h):
+        presence = np.zeros((w, h)) #np.random.randint(2, size=(self.width,self.height))
+        bulbs = np.zeros((w, h))
+        points = [ [math.floor(w*0.25), math.floor(h*0.25)], [math.floor(w*0.25), math.floor(h*0.75)], [math.floor(w*0.75), math.floor(h*0.25)],[math.floor(w*0.75), math.floor(h*0.75)]]
+
+        bulbs[tuple(points[0])] = -1
+
+        for point in points:
+            presence [tuple(point)] = 1
+
+        return presence, bulbs
+
     def random (self, w, h):
         presence = np.zeros((w, h)) #np.random.randint(2, size=(self.width,self.height))
         for i in range(math.floor(w/2)):

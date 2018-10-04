@@ -26,7 +26,8 @@ class ControlHome(Home):
     def __init__(self, w, h):
         super().__init__(w,h)
         self.scenario = Scenario()
-        self.presence, self.bulbs = self.scenario.diagonal(self.width, self.height)
+        #self.presence, self.bulbs = self.scenario.diagonal(self.width, self.height)
+        self.presence, self.bulbs = self.scenario.corners(self.width, self.height)
          
         
         self.fig = plt.figure(figsize=(1, 2))
@@ -60,4 +61,3 @@ class ControlHome(Home):
         ani = animation.FuncAnimation(self.fig, self.updatefig, interval=50, blit=True)
         plt.show()
 
-    
