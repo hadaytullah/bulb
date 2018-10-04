@@ -169,6 +169,35 @@ class SmartHome(Home):
                         score -= 1 #penalty for using a broken bulb
         return (float(score),)
     
+    def evaluateInd_table(self, individual):
+        #bulb-state, luminosity, presence : reward sign
+        logic_table = {
+            '000':1,
+            '001':-1,
+            '010':-1,
+            '011':1,
+            '-100':1,
+            '-101':1,
+            '-110':-1,
+            '-111':-1
+        }
+
+        score = 0
+        #for selected, bulbs in zip(individual, data):
+            #if selected:
+        for y in range(self.height): # top left is (X=0,Y=0)
+            for x in range(self.width):
+                presence_score = self.presence_in_radius2(1, x, y, individual)
+                key = ''
+                key += str(int(self.bulbs[x,y]))
+                key += str(int(individual[y*self.width+x])) #luninosity
+                key += str(int(1 if presence_score>0 else 0)) # presence
+
+                reward_sign = logic_table[key] #if logic_table[key] else 1
+                score = score + (reward_sign * 1)
+
+        return (float(score),)
+
     def presence_in_radius2 (self, radius, x, y, individual):
         block = ((x-1, y-1), (x, y-1), (x+1,y-1), (x+1, y), (x+1, y+1), (x, y+1), (x-1, y+1), (x-1, y)) # starts from left top
         
