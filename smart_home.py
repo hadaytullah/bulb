@@ -30,6 +30,9 @@ class SmartHome(Home):
     def __init__(self, w, h):
         super().__init__(w,h)
         self.scenario = Scenario()
+        #self.presence, self.bulbs = self.scenario.diagonal(self.width, self.height)
+        self.presence, self.bulbs = self.scenario.stripes(self.width, self.height)
+
         self.init_deap()
         self.init_figures()
         
@@ -39,7 +42,6 @@ class SmartHome(Home):
         self.pop = self.toolbox.population(n=1000)
     
     def init_figures(self):
-        self.presence, self.bulbs = self.scenario.diagonal(self.width, self.height)
         
         self.fig = plt.figure(figsize=(1, 3))
         
@@ -162,7 +164,7 @@ class SmartHome(Home):
                     #if self.presence_in_radius(1, x, y):
                     presence_score = self.presence_in_radius2(1, x, y, individual)
                     if self.bulbs[x,y] > -1 and presence_score > 0:
-                        score += self.presence_in_radius(1, x, y)
+                        score += presence_score
                     else:
                         score -= 1 #penalty for using a broken bulb
         return (float(score),)
@@ -174,7 +176,7 @@ class SmartHome(Home):
         
         if self.presence[x,y] > 0:
             presence_count += 50 #award for presence under the bulb
-            print ('+50')
+            #print ('+50')
         
         for point in block:
             if point[0] in range(self.width):
@@ -210,11 +212,11 @@ class SmartHome(Home):
         return luminosity.flatten()
         
     def decode(self, individual):
-#        bulbs = np.zeros((self.width,self.height))
-#        for y in range(self.height): # top left is (X=0,Y=0)
-#            for x in range(self.width):
-#                bulbs[x,y] = individual[y*self.width+x]
-        return np.reshape(individual, (-1, self.width))
+        bulbs = np.zeros((self.width,self.height))
+        for y in range(self.height): # top left is (X=0,Y=0)
+            for x in range(self.width):
+                bulbs[x,y] = individual[y*self.width+x]
+        return bulbs #np.reshape(individual, (-1, self.width))
  
     def updatefig(self, *args):
         algorithms.eaMuPlusLambda (
