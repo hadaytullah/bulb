@@ -117,6 +117,22 @@ class SmartHome(Home):
 #        return match_percentage
 
 
+#    def fitness(self, individual):#evalInd4
+#        score = 0
+#        #for selected, bulbs in zip(individual, data):
+#            #if selected:
+#        for y in range(self.height): # top left is (X=0,Y=0)
+#            for x in range(self.width):
+#
+#                if individual[y*self.width+x]>0:
+#                    #if self.presence_in_radius(1, x, y):
+#                    presence_score = self.presence_in_radius2(1, x, y, individual)
+#                    if self.bulbs[x,y] > -1 and presence_score > 0:
+#                        score += presence_score
+#                    else:
+#                        score -= 1 #penalty for using a broken bulb
+#        return (float(score),)
+
     def fitness(self, individual):#evalInd4
         score = 0
         #for selected, bulbs in zip(individual, data):
@@ -140,7 +156,7 @@ class SmartHome(Home):
         presence_count = 0
 
         if self.presence[x,y] > 0:
-            presence_count += 50 #award for presence under the bulb
+            presence_count += 10 #award for presence under the bulb
             #print ('+50')
 
         for point in block:
@@ -220,6 +236,13 @@ class SmartHome(Home):
 class CreativeHome(SmartHome):
     def __init__(self, width, height):
         super().__init__(width, height)
+        self.evaluation_unit = 1
+
+        self.goal_aware = True
+        self.resource_aware = True
+        self.context_aware = True
+        self.domain_aware = True
+
         self.goals = {
             'luminosity':{
                 'enabled': True,
@@ -232,6 +255,7 @@ class CreativeHome(SmartHome):
                 'evaluate': self.evaluate_cost
             }
         }
+
 
     #------------------ goal awareness stuff starts -----------------
     def evaluate_luminosity(self, individual):
@@ -261,27 +285,64 @@ class CreativeHome(SmartHome):
                 if individual[y*self.width+x]>0 and self.bulbs[x,y] > -1:
                     presence_score = self.presence_in_radius2(1, x, y, individual)
                     if presence_score < 1:
-                        score += 3
+                        score += 3 * self.evaluation_unit
         return score
+    # ------- main fitness function -------
+
     def fitness(self, individual):
         #print('goal based fitness')
         fitness = 0
-        for goal_name, goal in self.goals.items():
-            if goal['enabled']:
-                if goal['maximize']:
-                    value = goal['evaluate'](individual)
-                    #print(value)
-                    fitness = fitness + value
-                else:
-                    fitness = fitness - goal['evaluate'](individual)
+
+        if self.goal_aware:
+            for goal_name, goal in self.goals.items():
+                if goal['enabled']:
+                    if goal['maximize']:
+                        fitness = fitness + goal['evaluate'](individual)
+                    else:
+                        fitness = fitness - goal['evaluate'](individual)
+        #else:
+        #    fitness += super().fitness(individual)[0]
+
+        if self.resource_aware:
+            fitness += self.evaluate_resource(individual)
+
+        if self.domain_aware and self.context_aware:
+            fitness += self.evaluate_domain_context (individual)
+
+
         return (float(fitness),)
 
-    #------------------ goal awareness stuff ends -----------------
 
     #------- resoruce awareness
+    def evaluate_resource(self, individual):
+        # probe: luminosity sensors are resources too, may be merge prob-aw into resources. lumisity array is kind of probes
+        score = 0
+        #for selected, bulbs in zip(individual, data):
+            #if selected:
+        for y in range(self.height): # top left is (X=0,Y=0)
+            for x in range(self.width):
+                if individual[y*self.width+x]>0 and self.bulbs[x,y] == -1:
+                    score += (10 * self.evaluation_unit)
+        #penalty, -1 makes it reduce the fitness of individuals using broken bulbs
+        return -1*score
 
+    #------- domain and context, access window control, use windows --------------
 
+    def evaluate_domain_context(self, individual):
+        #domain: windows are source of light
+        #context: windows can be controlled for light
+        # assumption: one quarter of the space can be lit with windows there, left-top here
+        score = 0
+        for y in range(self.height): # top left is (X=0,Y=0)
+            for x in range(self.width):
+                if x < 0.5*self.width and y < 0.5*self.height: #left-top area
+                    if individual[y*self.width+x]>0:
+                        score += 1*self.evaluation_unit
 
+        #penalty for using bulbs in already lit area
+        return -1*score
+
+    # --- probe and enactors are kind of resources, does not make sense, drop them, see evaluate_resource function for explanation
 
     #
 
