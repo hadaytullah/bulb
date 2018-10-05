@@ -99,25 +99,25 @@ class SmartHome(Home):
                            self.toolbox.individual)
         self.toolbox.register("mate", tools.cxTwoPoint)
         self.toolbox.register("select", tools.selBest)
-        self.toolbox.register("evaluate", self.evaluateInd4)
-        self.toolbox.register("mutate", self.myMutation)
+        self.toolbox.register("evaluate", self.fitness)
+        self.toolbox.register("mutate", self.mutate)
         self.pop = self.toolbox.population(n=100)
 
-    def fitness(self, individual, data):
-        print (data)
-        print (individual)
-        match = 0
-        #for selected, bulbs in zip(individual, data):
-            #if selected:
-        for x in range(self.width):
-            for y in range(self.height):
-                if self.presence[x,y]>0 and individual[x,y]>0:
-                    match += 1
-        match_percentage = match / self.width * self.height
-        return match_percentage
+#    def fitness_(self, individual, data):
+#        print (data)
+#        print (individual)
+#        match = 0
+#        #for selected, bulbs in zip(individual, data):
+#            #if selected:
+#        for x in range(self.width):
+#            for y in range(self.height):
+#                if self.presence[x,y]>0 and individual[x,y]>0:
+#                    match += 1
+#        match_percentage = match / self.width * self.height
+#        return match_percentage
 
 
-    def evaluateInd4(self, individual):
+    def fitness(self, individual):#evalInd4
         score = 0
         #for selected, bulbs in zip(individual, data):
             #if selected:
@@ -152,7 +152,7 @@ class SmartHome(Home):
         return presence_count
 
 
-    def myMutation(self, individual):
+    def mutate(self, individual):
         #print('Mutating')
         luminosity = self.decode(individual)
 
@@ -189,7 +189,7 @@ class SmartHome(Home):
         algorithms.eaMuPlusLambda (
                 self.pop, self.toolbox,
                 400, 100, #parents, children
-                0.2, 0.8, #probabilities
+                0.5, 0.5, #probabilities
                 1) #iterations
 
         top = sorted(self.pop, key=lambda x:x.fitness.values[0])[-1]
@@ -217,27 +217,95 @@ class SmartHome(Home):
         # hypothesis
         pass
 
-class CreativeHome(object):
+class CreativeHome(SmartHome):
     def __init__(self, width, height):
-        self.wrapped_class = SmartHome(width, height)
+        super().__init__(width, height)
+        self.goals = {
+            'luminosity':{
+                'enabled': True,
+                'maximize': True,
+                'evaluate': self.evaluate_luminosity
+            },
+            'cost':{
+                'enabled':True,
+                'maximize':False,
+                'evaluate': self.evaluate_cost
+            }
+        }
 
-    def __getattr__(self,attr):
-        orig_attr = self.wrapped_class.__getattribute__(attr)
-        if callable(orig_attr):
-            def hooked(*args, **kwargs):
-                self.pre()
-                result = orig_attr(*args, **kwargs)
-                # prevent wrapped_class from becoming unwrapped
-                if result == self.wrapped_class:
-                    return self
-                self.post()
-                return result
-            return hooked
-        else:
-            return orig_attr
+    #------------------ goal awareness stuff starts -----------------
+    def evaluate_luminosity(self, individual):
+        score = 0
+        #for selected, bulbs in zip(individual, data):
+            #if selected:
+        for y in range(self.height): # top left is (X=0,Y=0)
+            for x in range(self.width):
 
-    def pre(self):
-        print (">> pre")
+                if individual[y*self.width+x]>0:
+                    #if self.presence_in_radius(1, x, y):
+                    presence_score = self.presence_in_radius2(1, x, y, individual)
+                    #if self.bulbs[x,y] > -1 and presence_score > 0:
+                    #if presence_score > 0:
+                    score += presence_score
+                    #else:
+                    #    score -= 1 #penalty for using a broken bulb
+        return score
 
-    def post(self):
-        print ("<< post")
+
+    def evaluate_cost(self, individual):
+        score = 0
+        #for selected, bulbs in zip(individual, data):
+            #if selected:
+        for y in range(self.height): # top left is (X=0,Y=0)
+            for x in range(self.width):
+                if individual[y*self.width+x]>0 and self.bulbs[x,y] > -1:
+                    presence_score = self.presence_in_radius2(1, x, y, individual)
+                    if presence_score < 1:
+                        score += 3
+        return score
+    def fitness(self, individual):
+        #print('goal based fitness')
+        fitness = 0
+        for goal_name, goal in self.goals.items():
+            if goal['enabled']:
+                if goal['maximize']:
+                    value = goal['evaluate'](individual)
+                    #print(value)
+                    fitness = fitness + value
+                else:
+                    fitness = fitness - goal['evaluate'](individual)
+        return (float(fitness),)
+
+    #------------------ goal awareness stuff ends -----------------
+
+    #------- resoruce awareness
+
+
+
+
+    #
+
+#class CreativeHome_(object):
+#    def __init__(self, width, height):
+#        self.wrapped_class = SmartHome(width, height)
+#
+#    def __getattr__(self,attr):
+#        orig_attr = self.wrapped_class.__getattribute__(attr)
+#        if callable(orig_attr):
+#            def hooked(*args, **kwargs):
+#                self.pre()
+#                result = orig_attr(*args, **kwargs)
+#                # prevent wrapped_class from becoming unwrapped
+#                if result == self.wrapped_class:
+#                    return self
+#                self.post()
+#                return result
+#            return hooked
+#        else:
+#            return orig_attr
+#
+#    def pre(self):
+#        print (">> pre")
+#
+#    def post(self):
+#        print ("<< post")
