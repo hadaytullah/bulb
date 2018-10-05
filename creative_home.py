@@ -242,14 +242,14 @@ class CreativeHome(SmartHome):
         #it is strategy aware already with the DEAP
         self.strategy_aware = True
 
-        # time,: reveal that the mid section is always empty so it can omit it completely in mutations etc? for efficiency reasons.
-        # time awareness detected a pattern, the mid section is always empty and therefore should remain untouched
+        # time awareness: Pattern detected --> the mid section is always empty
+        # Mid section should be ignore in initial population and mutations, it will lead to more efficient strategy generation. it worked! mutate() and generate_individuals() have been updated to reflect this.
         self.time_aware = True
         self.time_aware_width_bound = [0, width]
         self.time_aware_height_bound = [int(height*0.35), int(width*0.65)]
 
 
-        # hypothesis?
+        # hypothesis:
 
         self.goals = {
             'luminosity':{
@@ -345,11 +345,11 @@ class CreativeHome(SmartHome):
         score = 0
         for y in range(self.height): # top left is (X=0,Y=0)
             for x in range(self.width):
-                if x < 0.5*self.width and y < 0.5*self.height: #left-top area
+                if x < int(0.5*self.width) and y < int(0.5*self.height): #left-top area
                     if individual[y*self.width+x]>0:
-                        score += 1*self.evaluation_unit
+                        score += 10*self.evaluation_unit
 
-        #penalty for using bulbs in already lit area
+        #penalty for using bulbs in near window lit area
         return -1*score
 
     #----- time awareness realted stuff -----
