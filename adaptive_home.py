@@ -73,7 +73,7 @@ class AdaptiveHome(Home):
         point = [-1, -1]
 
         for point in block:
-            if point[0] in range(self.width)and point[1] in range(self.height):
+            if point[0] in range(self.width) and point[1] in range(self.height):
                 if self.bulbs[point[0], point[1]] > -1:
                     candidate_bulbs.append(point)
 

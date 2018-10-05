@@ -40,10 +40,6 @@ class SmartHome(Home):
         self.init_figures()
 
 
-
-
-
-
     def init_figures(self):
 
         self.fig = plt.figure(figsize=(1, 3))
@@ -221,7 +217,7 @@ class SmartHome(Home):
         ani = animation.FuncAnimation(self.fig, self.updatefig, interval=50, blit=True)
         plt.show()
     #---------------------- awareness ---------------------
-    def awareness_step(self):
+    #def awareness_step(self):
         # context: interaction with windows controller
         # resource: luminosity sensors, bulbs broken/working, bulb intensity high/low = radius
         # domain: windows are source of light
@@ -229,19 +225,31 @@ class SmartHome(Home):
         # probe: luminosity sensors
         # strategy,
         # enactor
-        # time,
+        # time
         # hypothesis
-        pass
+
 
 class CreativeHome(SmartHome):
     def __init__(self, width, height):
-        super().__init__(width, height)
+
         self.evaluation_unit = 1
 
         self.goal_aware = True
         self.resource_aware = True
         self.context_aware = True
         self.domain_aware = True
+
+        #it is strategy aware already with the DEAP
+        self.strategy_aware = True
+
+        # time,: reveal that the mid section is always empty so it can omit it completely in mutations etc? for efficiency reasons.
+        # time awareness detected a pattern, the mid section is always empty and therefore should remain untouched
+        self.time_aware = True
+        self.time_aware_width_bound = [0, width]
+        self.time_aware_height_bound = [int(height*0.35), int(width*0.65)]
+
+
+        # hypothesis?
 
         self.goals = {
             'luminosity':{
@@ -256,6 +264,7 @@ class CreativeHome(SmartHome):
             }
         }
 
+        super().__init__(width, height)
 
     #------------------ goal awareness stuff starts -----------------
     def evaluate_luminosity(self, individual):
@@ -287,6 +296,7 @@ class CreativeHome(SmartHome):
                     if presence_score < 1:
                         score += 3 * self.evaluation_unit
         return score
+
     # ------- main fitness function -------
 
     def fitness(self, individual):
@@ -341,6 +351,45 @@ class CreativeHome(SmartHome):
 
         #penalty for using bulbs in already lit area
         return -1*score
+
+    #----- time awareness realted stuff -----
+    # time awareness detected a pattern, the mid section is always empty and therefore should remain untouched
+
+    def generate_individual(self,icls):
+        luminosity = np.zeros((self.width,self.height))
+
+        for x in range(self.width_bound[0], self.width_bound[1]):
+            for y in range(self.height_bound[0], self.height_bound[1]):
+                # time-awareness affect
+                if self.time_aware and x in range(self.time_aware_width_bound[0], self.time_aware_width_bound[1]) and y in range(self.time_aware_height_bound[0], self.time_aware_height_bound[1]):
+                    luminosity[x,y] = 0
+                else:
+                    luminosity[x,y] = random.choice([0,1])
+                #print ('mutating')
+
+        genome = self.encode(luminosity)
+        return icls(genome)
+
+    def mutate(self, individual):
+        #print('Mutating')
+        luminosity = self.decode(individual)
+
+        for i in range(self.width):
+            x = random.randint(self.width_bound[0], self.width_bound[1])
+            y = random.randint(self.height_bound[0], self.height_bound[1])
+
+            if(self.bulbs[x,y] > -1):
+                # time-awareness affect
+                if self.time_aware and x in range(self.time_aware_width_bound[0], self.time_aware_width_bound[1]) and y in range(self.time_aware_height_bound[0], self.time_aware_height_bound[1]):
+                    luminosity[x,y] = 0
+                else:
+                    luminosity[x,y] = random.choice([0,1])
+
+        #luminosity = self.encode (luminosity)
+        self.update_individual(individual, luminosity)
+        #for i in range(self.width):
+        #    individual[random.randint(0,len(individual)-1)] = random.choice([0,1])
+        return (individual,)
 
     # --- probe and enactors are kind of resources, does not make sense, drop them, see evaluate_resource function for explanation
 

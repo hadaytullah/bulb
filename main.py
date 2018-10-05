@@ -12,8 +12,8 @@ HEIGHT = 20
 #smart_home = SmartHome(WIDTH,HEIGHT)
 #smart_home.run()
 
-#creative_home = CreativeHome(WIDTH,HEIGHT)
-#creative_home.run()
+creative_home = CreativeHome(WIDTH,HEIGHT)
+creative_home.run()
 
-adaptive_home = AdaptiveHome(WIDTH, HEIGHT)
-adaptive_home.run()
+#adaptive_home = AdaptiveHome(WIDTH, HEIGHT)
+#adaptive_home.run()
