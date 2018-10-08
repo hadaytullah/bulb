@@ -132,6 +132,7 @@ class SmartHome(Home):
         creator.create("FitnessMax", base.Fitness, weights=(1.0,))
         creator.create("Individual", list, fitness=creator.FitnessMax)
         self.steps = 0
+        self.MAX_STEPS = 500
         self.toolbox = base.Toolbox()
 
         self.toolbox.register(
@@ -282,7 +283,7 @@ class SmartHome(Home):
         #im.set_cmap("gray")
         #im.update()
         self.steps += 1
-        if self.steps > 200:
+        if self.steps > self.MAX_STEPS:
             self.ani.event_source.stop()
             plt.grid()
 
@@ -321,10 +322,12 @@ class CreativeHome(SmartHome):
 
         self.evaluation_unit = 1
 
-        self.goal_aware = True
-        self.resource_aware = True
-        self.context_aware = True
-        self.domain_aware = True
+        self.goal_aware = True # each goal can be seperately turned on/off
+        self.resource_aware = True #awareness of broken bulbs
+
+        #awarenss of window and its control system
+        self.context_aware = False #window controls system
+        self.domain_aware = False #window gives light
 
         #it is strategy aware already with the DEAP
         self.strategy_aware = True
