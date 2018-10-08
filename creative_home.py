@@ -33,8 +33,9 @@ class SmartHome(Home):
         self.width_bound = [1, w-2]
         self.height_bound = [1, h-2]
         #self.presence, self.bulbs = self.scenario.diagonal(self.width, self.height)
-        self.presence, self.bulbs = self.scenario.stripes(self.width, self.height)
+        #self.presence, self.bulbs = self.scenario.stripes(self.width, self.height)
         #self.presence, self.bulbs = self.scenario.corners(self.width, self.height)
+        self.presence, self.bulbs = self.scenario.corners2(self.width, self.height)
 
         self.init_deap()
         self.init_figures()
@@ -281,7 +282,7 @@ class SmartHome(Home):
         #im.set_cmap("gray")
         #im.update()
         self.steps += 1
-        if self.steps > 10:
+        if self.steps > 200:
             self.ani.event_source.stop()
             plt.grid()
 
