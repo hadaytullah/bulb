@@ -2,18 +2,25 @@ from smart_home import SmartHome
 from control_home import ControlHome
 from creative_home import CreativeHome
 from adaptive_home import AdaptiveHome
+import sys
 
 WIDTH = 20
 HEIGHT = 20
 
-#control_home = ControlHome(WIDTH,HEIGHT)
-#control_home.run()
+for arg in sys.argv:
+    if arg == 'control':
+        control_home = ControlHome(WIDTH,HEIGHT)
+        control_home.run()
+    elif arg == 'adaptive':
+        adaptive_home = AdaptiveHome(WIDTH, HEIGHT) #simple self-adaptive home, uses strategies
+        adaptive_home.run()
+        # complex self-adaptive home, uses evolutionary algo
+        #smart_home = SmartHome(WIDTH,HEIGHT)
+        #smart_home.run()
+    elif arg == 'creative':
+        creative_home = CreativeHome(WIDTH,HEIGHT)
+        creative_home.run()
 
-#smart_home = SmartHome(WIDTH,HEIGHT)
-#smart_home.run()
 
-creative_home = CreativeHome(WIDTH,HEIGHT)
-creative_home.run()
 
-#adaptive_home = AdaptiveHome(WIDTH, HEIGHT)
-#adaptive_home.run()
+
