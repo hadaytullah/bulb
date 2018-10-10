@@ -57,11 +57,11 @@ class AdaptiveHome(Home):
                         self.luminosity[x,y] = 1 #random.choice([1,2])
                     else:
                         x_near, y_near = self.strategy_find_near_bulb(x,y)
-                        if x_near > -1 and y_near > -1:
-                            self.luminosity[x_near,y_near] = 1 #random.choice([1,2])
+                        #if x_near > -1 and y_near > -1:
+                        self.luminosity[x_near,y_near] = 1 #random.choice([1,2])
                             #print('bulb found near')
-                else:
-                    self.luminosity[x,y] = 0
+                #else:
+                #    self.luminosity[x,y] = 0
 
         self.im.set_data(self.luminosity)
         self.luminosity_im.set_data(self.luminosity_extrapolate(self.luminosity))
@@ -84,7 +84,7 @@ class AdaptiveHome(Home):
         #there must some function doing this interpolation?
         for x in range(self.width_bound[0], self.width_bound[1]):
             for y in range(self.height_bound[0], self.height_bound[1]):
-                if luminosity[x,y] > 0:
+                if self.bulbs[x,y] > -1 and luminosity[x,y] > 0:
                     block = ((x-1, y-1), (x, y-1), (x+1,y-1), (x+1, y), (x+1, y+1), (x, y+1), (x-1, y+1), (x-1, y))
                     for point in block:
                         if point[0] in range(self.width_bound[0], self.width_bound[1]) and point[1] in range(self.height_bound[0], self.height_bound[1]):
@@ -102,9 +102,10 @@ class AdaptiveHome(Home):
                 if self.bulbs[point[0], point[1]] > -1:
                     candidate_bulbs.append(point)
 
-        if len(candidate_bulbs):
+        if len(candidate_bulbs) > 0:
             point = random.choice(candidate_bulbs)
 
+        print(point)
         return point[0], point[1]
 
     def run(self):

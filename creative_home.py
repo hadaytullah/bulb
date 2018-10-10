@@ -219,11 +219,12 @@ class SmartHome(Home):
         #there must some function doing this interpolation?
         for x in range(self.width_bound[0], self.width_bound[1]):
             for y in range(self.height_bound[0], self.height_bound[1]):
-                if luminosity[x,y] > 0:
-                    block = ((x-1, y-1), (x, y-1), (x+1,y-1), (x+1, y), (x+1, y+1), (x, y+1), (x-1, y+1), (x-1, y))
-                    for point in block:
-                        if point[0] in range(self.width_bound[0], self.width_bound[1]) and point[1] in range(self.height_bound[0], self.height_bound[1]):
-                            luminosity[point[0],point[1]] += 0.15*luminosity[x,y]
+                if self.bulbs[x,y] > -1:
+                    if luminosity[x,y] > 0:
+                        block = ((x-1, y-1), (x, y-1), (x+1,y-1), (x+1, y), (x+1, y+1), (x, y+1), (x-1, y+1), (x-1, y))
+                        for point in block:
+                            if point[0] in range(self.width_bound[0], self.width_bound[1]) and point[1] in range(self.height_bound[0], self.height_bound[1]):
+                                luminosity[point[0],point[1]] += 0.15*luminosity[x,y]
         return luminosity
 
     def run(self):
