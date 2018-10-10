@@ -40,7 +40,6 @@ class SmartHome(Home):
         self.init_deap()
         self.init_figures()
 
-
     def generate_individual(self,icls):
         luminosity = np.zeros((self.width,self.height))
 
@@ -138,19 +137,19 @@ class SmartHome(Home):
     def presence_in_radius2 (self, radius, x, y, individual):
         block = ((x-1, y-1), (x, y-1), (x+1,y-1), (x+1, y), (x+1, y+1), (x, y+1), (x-1, y+1), (x-1, y)) # starts from left top
 
-        presence_count = 0
+        presence_score = 0
 
         if self.presence[x,y] > 0:
-            presence_count += 10 #award for presence under the bulb
+            presence_score += int(self.weight['present'] * self.evaluation_unit) #award for presence under the bulb
             #print ('+50')
 
         for point in block:
             if point[0] in range(self.width):
                 if point[1] in range(self.height):
                     if self.presence[point[0], point[1]] > 0 and individual[point[1]*self.width+point[0]] < 1:#someone present in radius and that area is dark
-                        presence_count += 1
+                        presence_score += int(self.weight['present_in_radius'] * self.evaluation_unit)
 
-        return presence_count
+        return presence_score
 
 
     def mutate(self, individual):
@@ -225,6 +224,9 @@ class SmartHome(Home):
                         for point in block:
                             if point[0] in range(self.width_bound[0], self.width_bound[1]) and point[1] in range(self.height_bound[0], self.height_bound[1]):
                                 luminosity[point[0],point[1]] += 0.15*luminosity[x,y]
+                else:
+                    luminosity[x,y] = 0
+
         return luminosity
 
     def run(self):
@@ -246,7 +248,7 @@ class SmartHome(Home):
 class CreativeHome(SmartHome):
     def __init__(self, width, height):
 
-        self.evaluation_unit = 1
+        self.evaluation_unit = 10
 
         self.goal_aware = True # each goal can be seperately turned on/off
         self.resource_aware = True #awareness of broken bulbs
@@ -279,6 +281,15 @@ class CreativeHome(SmartHome):
             }
         }
 
+        self.weight = {
+            'present':0.3, #luminosity
+            'present_in_radius':0.1, #luminosity
+            'cost':0.2,
+            'penalty_broken_bulb':0.8,
+            'context':0.35
+            #time:
+
+        }
         super().__init__(width, height)
 
     #------------------ goal awareness stuff starts -----------------
@@ -296,21 +307,22 @@ class CreativeHome(SmartHome):
                     #if presence_score > 0:
                     score += presence_score
                     #else:
-                    #    score -= 1 #penalty for using a broken bulb
+                        #penalty for using a broken bulb
+                    #    score -= int( self.weight['penalty_broken_bulb'] * 1)
         return score
 
 
     def evaluate_cost(self, individual):
-        score = 0
+        cost_score = 0
         #for selected, bulbs in zip(individual, data):
             #if selected:
         for y in range(self.height): # top left is (X=0,Y=0)
             for x in range(self.width):
                 if individual[y*self.width+x]>0 and self.bulbs[x,y] > -1:
-                    presence_score = self.presence_in_radius2(1, x, y, individual)
-                    if presence_score < 1:
-                        score += 3 * self.evaluation_unit
-        return score
+                    #presence_score = self.presence_in_radius2(1, x, y, individual)
+                    #if presence_score is 0:
+                    cost_score += int(self.weight['cost'] * self.evaluation_unit)
+        return cost_score
 
     # ------- main fitness function -------
 
@@ -346,8 +358,8 @@ class CreativeHome(SmartHome):
             #if selected:
         for y in range(self.height): # top left is (X=0,Y=0)
             for x in range(self.width):
-                if individual[y*self.width+x]>0 and self.bulbs[x,y] == -1:
-                    score += (10 * self.evaluation_unit)
+                if individual[y*self.width+x] > 0 and self.bulbs[x,y] == -1:
+                    score += int(self.weight['penalty_broken_bulb'] * self.evaluation_unit)
         #penalty, -1 makes it reduce the fitness of individuals using broken bulbs
         return -1*score
 
@@ -375,49 +387,75 @@ class CreativeHome(SmartHome):
             for x in range(self.width):
                 if x < int(0.5*self.width) and y < int(0.5*self.height): #left-top area
                     if individual[y*self.width+x]>0:
-                        score += 10*self.evaluation_unit
+                        score += int(self.weight['context'] * self.evaluation_unit)
 
         #penalty for using bulbs in near window lit area
         return -1*score
 
     #----- time awareness realted stuff -----
     # time awareness detected a pattern, the mid section is always empty and therefore should remain untouched
-
     def generate_individual(self,icls):
-        luminosity = np.zeros((self.width,self.height))
 
-        for x in range(self.width_bound[0], self.width_bound[1]):
-            for y in range(self.height_bound[0], self.height_bound[1]):
-                # time-awareness affect
-                if self.time_aware and x in range(self.time_aware_width_bound[0], self.time_aware_width_bound[1]) and y in range(self.time_aware_height_bound[0], self.time_aware_height_bound[1]):
-                    luminosity[x,y] = 0
-                else:
-                    luminosity[x,y] = random.choice([0,1])
-                #print ('mutating')
+        individual = super().generate_individual(icls)
 
-        genome = self.encode(luminosity)
-        return icls(genome)
+        if self.time_aware:
+            individual = self.apply_mid_section_empty_learning(individual)
+
+        return individual
 
     def mutate(self, individual):
         #print('Mutating')
-        luminosity = self.decode(individual)
+        individual = super().mutate(individual)[0]
 
-        for i in range(self.width):
-            x = random.randint(self.width_bound[0], self.width_bound[1])
-            y = random.randint(self.height_bound[0], self.height_bound[1])
+        if self.time_aware:
+            individual = self.apply_mid_section_empty_learning(individual)
 
-            if(self.bulbs[x,y] > -1):
-                # time-awareness affect
-                if self.time_aware and x in range(self.time_aware_width_bound[0], self.time_aware_width_bound[1]) and y in range(self.time_aware_height_bound[0], self.time_aware_height_bound[1]):
-                    luminosity[x,y] = 0
-                else:
-                    luminosity[x,y] = random.choice([0,1])
 
-        #luminosity = self.encode (luminosity)
-        self.update_individual(individual, luminosity)
-        #for i in range(self.width):
-        #    individual[random.randint(0,len(individual)-1)] = random.choice([0,1])
         return (individual,)
+
+    def apply_mid_section_empty_learning(self, individual):
+        luminosity = self.decode(individual)
+        for x in range(self.time_aware_width_bound[0], self.time_aware_width_bound[1]):
+            for y in range(self.time_aware_height_bound[0], self.time_aware_height_bound[1]):
+                luminosity[x,y] = 0
+        self.update_individual(individual, luminosity)
+        return individual
+
+#    def generate_individual(self,icls):
+#        luminosity = np.zeros((self.width,self.height))
+#
+#        for x in range(self.width_bound[0], self.width_bound[1]):
+#            for y in range(self.height_bound[0], self.height_bound[1]):
+#                # time-awareness affect
+#                if self.time_aware and x in range(self.time_aware_width_bound[0], self.time_aware_width_bound[1]) and y in range(self.time_aware_height_bound[0], self.time_aware_height_bound[1]):
+#                    luminosity[x,y] = 0
+#                else:
+#                    luminosity[x,y] = random.choice([0,1])
+#                #print ('mutating')
+#
+#        genome = self.encode(luminosity)
+#        return icls(genome)
+
+#    def mutate(self, individual):
+#        #print('Mutating')
+#        luminosity = self.decode(individual)
+#
+#        for i in range(self.width):
+#            x = random.randint(self.width_bound[0], self.width_bound[1])
+#            y = random.randint(self.height_bound[0], self.height_bound[1])
+#
+#            if(self.bulbs[x,y] > -1):
+#                # time-awareness affect
+#                if self.time_aware and x in range(self.time_aware_width_bound[0], self.time_aware_width_bound[1]) and y in range(self.time_aware_height_bound[0], self.time_aware_height_bound[1]):
+#                    luminosity[x,y] = 0
+#                else:
+#                    luminosity[x,y] = random.choice([0,1])
+#
+#        #luminosity = self.encode (luminosity)
+#        self.update_individual(individual, luminosity)
+#        #for i in range(self.width):
+#        #    individual[random.randint(0,len(individual)-1)] = random.choice([0,1])
+#        return (individual,)
 
     # --- probe and enactors are kind of resources, does not make sense, drop them, see evaluate_resource function for explanation
 
