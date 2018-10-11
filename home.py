@@ -11,9 +11,9 @@ class Home:
         
         #self.room = np.zeros((self.width,self.height))
         #self.environment = np.zeros((self.width,self.height))
-        self.bulbs = np.zeros((self.width,self.height))
-        self.luminosity = np.zeros((self.width,self.height))
-        self.presence = np.zeros((self.width,self.height))
+        self.bulbs = np.zeros((self.height, self.width))
+        self.luminosity = np.zeros((self.height, self.width,))
+        self.presence = np.zeros((self.height, self.width,))
     
     def create_plot(self, location, title, data, plot_cmap='gray_r', plot_interpolation='nearest', plot_vmin=0, plot_vmax=1, plot_animated=False):
 

@@ -30,8 +30,8 @@ class SmartHome(Home):
     def __init__(self, w, h):
         super().__init__(w,h)
         self.scenario = Scenario()
-        self.width_bound = [1, w-2]
-        self.height_bound = [1, h-2]
+        self.width_bound = [1, w-1]
+        self.height_bound = [1, h-1]
         #self.presence, self.bulbs = self.scenario.diagonal(self.width, self.height)
         #self.presence, self.bulbs = self.scenario.stripes(self.width, self.height)
         #self.presence, self.bulbs = self.scenario.corners(self.width, self.height)
@@ -41,11 +41,11 @@ class SmartHome(Home):
         self.init_figures()
 
     def generate_individual(self,icls):
-        luminosity = np.zeros((self.width,self.height))
+        luminosity = np.zeros((self.height,self.width))
 
-        for x in range(self.width_bound[0], self.width_bound[1]):
-            for y in range(self.height_bound[0], self.height_bound[1]):
-                luminosity[x,y] = random.choice([0,1])
+        for y in range(self.height_bound[0], self.height_bound[1]):
+            for x in range(self.width_bound[0], self.width_bound[1]):
+                luminosity[y,x] = random.choice([0,1])
                 #print ('mutating')
 
         genome = self.encode(luminosity)
@@ -127,7 +127,7 @@ class SmartHome(Home):
                 if individual[y*self.width+x]>0:
                     #if self.presence_in_radius(1, x, y):
                     presence_score = self.presence_in_radius2(1, x, y, individual)
-                    if self.bulbs[x,y] > -1 and presence_score > 0:
+                    if self.bulbs[y,x] > -1 and presence_score > 0:
                         score += presence_score
                     else:
                         score -= 1 #penalty for using a broken bulb
@@ -135,19 +135,19 @@ class SmartHome(Home):
 
 
     def presence_in_radius2 (self, radius, x, y, individual):
-        block = ((x-1, y-1), (x, y-1), (x+1,y-1), (x+1, y), (x+1, y+1), (x, y+1), (x-1, y+1), (x-1, y)) # starts from left top
+        block = ((y-1, x-1), (y, x-1), (y+1,x-1), (y+1, x), (y+1, x+1), (y, x+1), (y-1, x+1), (y-1, x)) # starts from left top
 
         presence_score = 0
 
-        if self.presence[x,y] > 0:
+        if self.presence[y,x] > 0:
             presence_score += int(self.weight['present'] * self.evaluation_unit) #award for presence under the bulb
             #print ('+50')
 
         for point in block:
-            if point[0] in range(self.width):
-                if point[1] in range(self.height):
-                    if self.presence[point[0], point[1]] > 0 and individual[point[1]*self.width+point[0]] < 1:#someone present in radius and that area is dark
-                        presence_score += int(self.weight['present_in_radius'] * self.evaluation_unit)
+            if point[0] in range(self.height) and point[1] in range(self.width):
+                if self.presence[point[0], point[1]] > 0:
+                #and self.bulbs[point[0],point[1]] < 0: #individual[point[0]*self.width+point[1]] < 1:#someone present in radius and that area is dark
+                    presence_score += int(0.30 * self.weight['present'] * self.evaluation_unit)
 
         return presence_score
 
@@ -160,8 +160,8 @@ class SmartHome(Home):
             x = random.randint(self.width_bound[0], self.width_bound[1])
             y = random.randint(self.height_bound[0], self.height_bound[1])
 
-            if(self.bulbs[x,y] > -1):
-                luminosity[x,y] = random.choice([1,1])
+            if(self.bulbs[y,x] > -1):
+                luminosity[y,x] = random.choice([0,1])
 
         #luminosity = self.encode (luminosity)
         self.update_individual(individual, luminosity)
@@ -172,16 +172,16 @@ class SmartHome(Home):
     def update_individual (self, individual, data):
         for y in range(self.height):
             for x in range(self.width):
-                individual[y*self.width+x] = data[x,y]
+                individual[y*self.width+x] = data[y,x]
 
     def encode(self, luminosity):
         return luminosity.flatten()
 
     def decode(self, individual):
-        bulbs = np.zeros((self.width,self.height))
+        bulbs = np.zeros((self.height, self.width))
         for y in range(self.height): # top left is (X=0,Y=0)
             for x in range(self.width):
-                bulbs[x,y] = individual[y*self.width+x]
+                bulbs[y,x] = individual[y*self.width+x]
         return bulbs #np.reshape(individual, (-1, self.width))
 
     #------------------ simulation loop ----------------
@@ -195,8 +195,9 @@ class SmartHome(Home):
         top = sorted(self.pop, key=lambda x:x.fitness.values[0])[-1]
         fit = top.fitness.values[0]
         print ('generation:{}, best fitness-: {}'.format(self.steps, fit))
-
+        #print("TOP:", top)
         self.luminosity = self.decode(top)
+        #print("DRAW:",self.luminosity)
         self.im.set_data(self.luminosity)
         #self.im.set_array(self.luminosity)
         #self.im.set_facecolors(self.luminosity)
@@ -216,16 +217,16 @@ class SmartHome(Home):
 
     def luminosity_extrapolate(self, luminosity):
         #there must some function doing this interpolation?
-        for x in range(self.width_bound[0], self.width_bound[1]):
-            for y in range(self.height_bound[0], self.height_bound[1]):
-                if self.bulbs[x,y] > -1:
-                    if luminosity[x,y] > 0:
-                        block = ((x-1, y-1), (x, y-1), (x+1,y-1), (x+1, y), (x+1, y+1), (x, y+1), (x-1, y+1), (x-1, y))
+        for y in range(self.height_bound[0], self.height_bound[1]):
+            for x in range(self.width_bound[0], self.width_bound[1]):
+                if self.bulbs[y,x] > -1:
+                    if luminosity[y,x] > 0:
+                        block = ((y-1, x-1), (y, x-1), (y+1,x-1), (y+1, x), (y+1, x+1), (y, x+1), (y-1, x+1), (y-1, x))
                         for point in block:
-                            if point[0] in range(self.width_bound[0], self.width_bound[1]) and point[1] in range(self.height_bound[0], self.height_bound[1]):
-                                luminosity[point[0],point[1]] += 0.15*luminosity[x,y]
+                            if point[1] in range(self.width_bound[0], self.width_bound[1]) and point[0] in range(self.height_bound[0], self.height_bound[1]):
+                                luminosity[point[0],point[1]] += 0.15*luminosity[y,x]
                 else:
-                    luminosity[x,y] = 0
+                    luminosity[y,x] = 0
 
         return luminosity
 
@@ -251,18 +252,18 @@ class CreativeHome(SmartHome):
         self.evaluation_unit = 10
 
         self.goal_aware = True # each goal can be seperately turned on/off
-        self.resource_aware = True #awareness of broken bulbs
+        self.resource_aware = False #awareness of broken bulbs
 
         #awarenss of window and its control system
-        self.context_aware = True #window controls system
-        self.domain_aware = True #window gives light
+        self.context_aware = False #window controls system
+        self.domain_aware = False #window gives light
 
         #it is strategy aware already with the DEAP
         self.strategy_aware = True
 
         # time awareness: Pattern detected --> the mid section is always empty
         # Mid section should be ignore in initial population and mutations, it will lead to more efficient strategy generation. it worked! mutate() and generate_individuals() have been updated to reflect this.
-        self.time_aware = True
+        self.time_aware = False
         self.time_aware_width_bound = [0, width]
         self.time_aware_height_bound = [int(height*0.35), int(width*0.65)]
 
@@ -282,11 +283,10 @@ class CreativeHome(SmartHome):
         }
 
         self.weight = {
-            'present':0.3, #luminosity
-            'present_in_radius':0.1, #luminosity
-            'cost':0.2,
-            'penalty_broken_bulb':0.8,
-            'context':0.35
+            'present':6.0, #luminosity
+            'cost':4.0,
+            'penalty_broken_bulb':12.0,
+            'context':3.5
             #time:
 
         }
@@ -318,7 +318,7 @@ class CreativeHome(SmartHome):
             #if selected:
         for y in range(self.height): # top left is (X=0,Y=0)
             for x in range(self.width):
-                if individual[y*self.width+x]>0 and self.bulbs[x,y] > -1:
+                if individual[y*self.width+x]>0 and self.bulbs[y,x] > -1:
                     #presence_score = self.presence_in_radius2(1, x, y, individual)
                     #if presence_score is 0:
                     cost_score += int(self.weight['cost'] * self.evaluation_unit)
@@ -358,7 +358,7 @@ class CreativeHome(SmartHome):
             #if selected:
         for y in range(self.height): # top left is (X=0,Y=0)
             for x in range(self.width):
-                if individual[y*self.width+x] > 0 and self.bulbs[x,y] == -1:
+                if individual[y*self.width+x] > 0 and self.bulbs[y,x] == -1:
                     score += int(self.weight['penalty_broken_bulb'] * self.evaluation_unit)
         #penalty, -1 makes it reduce the fitness of individuals using broken bulbs
         return -1*score
@@ -369,12 +369,12 @@ class CreativeHome(SmartHome):
         if self.domain_aware and self.context_aware:
             #add windows as bulbs at the edges of top-left corner
             for y in range(int(self.height*0.5)): # top left is (X=0,Y=0)
-                luminosity[0,y] = 1
-                luminosity[1,y] = 1
+                luminosity[y,0] = 1
+                luminosity[y,1] = 1
 
             for x in range(int(self.width*0.5)):
-                luminosity[x,0] = 1
-                luminosity[x,1] = 1
+                luminosity[0,x] = 1
+                luminosity[1,x] = 1
 
         return super().luminosity_extrapolate(luminosity)
 
@@ -406,19 +406,22 @@ class CreativeHome(SmartHome):
     def mutate(self, individual):
         #print('Mutating')
         individual = super().mutate(individual)[0]
-
+        #print("Before Mutate ", individual)
         if self.time_aware:
             individual = self.apply_mid_section_empty_learning(individual)
 
-
+        #print("MUTATE_IND", individual)
         return (individual,)
 
     def apply_mid_section_empty_learning(self, individual):
+        #print ("INDIVIDUAL",individual)
         luminosity = self.decode(individual)
-        for x in range(self.time_aware_width_bound[0], self.time_aware_width_bound[1]):
-            for y in range(self.time_aware_height_bound[0], self.time_aware_height_bound[1]):
-                luminosity[x,y] = 0
+        #print("LUMINOSITY", luminosity)
+        for y in range(self.time_aware_height_bound[0], self.time_aware_height_bound[1]):
+            for x in range(self.time_aware_width_bound[0], self.time_aware_width_bound[1]):
+                luminosity[y,x] = 0
         self.update_individual(individual, luminosity)
+        #print("UPDATED IND", individual)
         return individual
 
 #    def generate_individual(self,icls):
