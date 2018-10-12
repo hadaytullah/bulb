@@ -81,3 +81,18 @@ class Scenario:
             presence [y,x] = 1
         return presence
 
+    def extreme(self, w, h):
+        presence = np.zeros((h, w)) #np.random.randint(2, size=(self.width,self.height))
+        bulbs = np.zeros((h, w))
+
+        bulbs[2:5,2:w-2] = -1
+        bulbs[h-5:h-2,2:w-2] = -1
+        bulbs[5:8, int(w/2)-1:int(w/2)+2] = -1
+        bulbs[h-8:h-5, int(w/2)-1:int(w/2)+2] = -1
+
+        presence[3,4:w-4] = 1
+        presence[h-4,4:w-4] = 1
+        presence[5:7, int(w/2)] = 1
+        presence[h-7:h-5, int(w/2)] = 1
+
+        return presence, bulbs

@@ -35,7 +35,8 @@ class SmartHome(Home):
         #self.presence, self.bulbs = self.scenario.diagonal(self.width, self.height)
         #self.presence, self.bulbs = self.scenario.stripes(self.width, self.height)
         #self.presence, self.bulbs = self.scenario.corners(self.width, self.height)
-        self.presence, self.bulbs = self.scenario.corners2(self.width, self.height)
+        #self.presence, self.bulbs = self.scenario.corners2(self.width, self.height)
+        self.presence, self.bulbs = self.scenario.extreme(self.width, self.height)
 
         self.init_deap()
         self.init_figures()
@@ -252,18 +253,18 @@ class CreativeHome(SmartHome):
         self.evaluation_unit = 10
 
         self.goal_aware = True # each goal can be seperately turned on/off
-        self.resource_aware = False #awareness of broken bulbs
+        self.resource_aware = True #awareness of broken bulbs
 
         #awarenss of window and its control system
-        self.context_aware = False #window controls system
-        self.domain_aware = False #window gives light
+        self.context_aware = True #window controls system
+        self.domain_aware = True #window gives light
 
         #it is strategy aware already with the DEAP
         self.strategy_aware = True
 
         # time awareness: Pattern detected --> the mid section is always empty
         # Mid section should be ignore in initial population and mutations, it will lead to more efficient strategy generation. it worked! mutate() and generate_individuals() have been updated to reflect this.
-        self.time_aware = False
+        self.time_aware = True
         self.time_aware_width_bound = [0, width]
         self.time_aware_height_bound = [int(height*0.35), int(width*0.65)]
 
