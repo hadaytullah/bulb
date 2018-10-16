@@ -30,7 +30,7 @@ class AdaptiveHome(Home):
         self.scenario = Scenario()
         #self.presence, self.bulbs = self.scenario.diagonal(self.width, self.height)
         #self.presence, self.bulbs = self.scenario.corners(self.width, self.height)
-        self.presence, self.bulbs = self.scenario.corners2(self.width, self.height)
+        self.presence, self.bulbs = self.scenario.corners2(self.height, self.width)
         #self.presence, self.bulbs = self.scenario.stripes(self.width, self.height)
 
         self.init_figures()
@@ -52,13 +52,13 @@ class AdaptiveHome(Home):
 
         for y in range(self.height):
             for x in range(self.width):
-                if self.presence[x,y] > 0:
-                    if self.bulbs[x,y] > -1:
-                        self.luminosity[x,y] = 1 #random.choice([1,2])
+                if self.presence[y,x] > 0:
+                    if self.bulbs[y,x] > -1:
+                        self.luminosity[y,x] = 1 #random.choice([1,2])
                     else:
-                        x_near, y_near = self.strategy_find_near_bulb(x,y)
+                        y_near, x_near = self.strategy_find_near_bulb(y,x)
                         #if x_near > -1 and y_near > -1:
-                        self.luminosity[x_near,y_near] = 1 #random.choice([1,2])
+                        self.luminosity[y_near,x_near] = 1 #random.choice([1,2])
                             #print('bulb found near')
                 #else:
                 #    self.luminosity[x,y] = 0
@@ -82,23 +82,26 @@ class AdaptiveHome(Home):
 
     def luminosity_extrapolate(self, luminosity):
         #there must some function doing this interpolation?
-        for x in range(self.width_bound[0], self.width_bound[1]):
-            for y in range(self.height_bound[0], self.height_bound[1]):
-                if self.bulbs[x,y] > -1 and luminosity[x,y] > 0:
-                    block = ((x-1, y-1), (x, y-1), (x+1,y-1), (x+1, y), (x+1, y+1), (x, y+1), (x-1, y+1), (x-1, y))
-                    for point in block:
-                        if point[0] in range(self.width_bound[0], self.width_bound[1]) and point[1] in range(self.height_bound[0], self.height_bound[1]):
-                            luminosity[point[0],point[1]] += 0.15*luminosity[x,y]
+        for y in range(self.height_bound[0], self.height_bound[1]):
+            for x in range(self.width_bound[0], self.width_bound[1]):
+                if self.bulbs[y,x] > -1:
+                    if luminosity[y,x] > 0:
+                        block = ((y-1, x-1), (y, x-1), (y+1,x-1), (y+1, x), (y+1, x+1), (y, x+1), (y-1, x+1), (y-1, x))
+                        for point in block:
+                            if point[1] in range(self.width_bound[0], self.width_bound[1]) and point[0] in range(self.height_bound[0], self.height_bound[1]):
+                                luminosity[point[0],point[1]] += 0.15*luminosity[y,x]
+                else:
+                    luminosity[y,x] = 0
+
         return luminosity
 
-    def strategy_find_near_bulb(self, x, y):
-        block = ((x-1, y-1), (x, y-1), (x+1,y-1), (x+1, y), (x+1, y+1), (x, y+1), (x-1, y+1), (x-1, y)) # starts from left top
-        #print('looking for nearby lamp')
+    def strategy_find_near_bulb(self, y, x):
+        block = ((y-1, x-1), (y, x-1), (y+1,x-1), (y+1, x), (y+1, x+1), (y, x+1), (y-1, x+1), (y-1, x))
         candidate_bulbs = []
         point = [-1, -1]
 
         for point in block:
-            if point[0] in range(self.width) and point[1] in range(self.height):
+            if point[0] in range(self.height) and point[1] in range(self.width):
                 if self.bulbs[point[0], point[1]] > -1:
                     candidate_bulbs.append(point)
 

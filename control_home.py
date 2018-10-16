@@ -62,6 +62,7 @@ class ControlHome(Home):
     
         self.ani.event_source.stop()
         plt.grid()
+        plt.grid()
 
 
         return self.im, self.luminosity_im
