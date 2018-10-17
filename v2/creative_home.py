@@ -34,18 +34,18 @@ class CreativeHome(AdaptiveHome):
         self.evaluation_unit = 10
 
         self.goal_aware = True # each goal can be seperately turned on/off
-        self.resource_aware = True #awareness of broken bulbs
+        self.resource_aware = False #awareness of broken bulbs
 
         #awarenss of window and its control system
-        self.context_aware = True #window controls system
-        self.domain_aware = True #window gives light
+        self.context_aware = False #window controls system
+        self.domain_aware = False #window gives light
 
         #it is strategy aware already with the DEAP
-        self.strategy_aware = True
+        self.strategy_aware = False
 
         # time awareness: Pattern detected --> the mid section is always empty
         # Mid section should be ignore in initial population and mutations, it will lead to more efficient strategy generation. it worked! mutate() and generate_individuals() have been updated to reflect this.
-        self.time_aware = True
+        self.time_aware = False
         self.time_aware_width_bound = [0, self.width]
         self.time_aware_height_bound = [int(self.height*0.35), int(self.width*0.65)]
 
@@ -81,8 +81,8 @@ class CreativeHome(AdaptiveHome):
         self.init_deap()
         #self.init_figures()
 
-#----- time awareness realted stuff -----
-    # time awareness detected a pattern, the mid section is always empty and therefore should remain untouched
+    #----- Strategy-Awareness -----
+
     def generate_individual(self,icls):
 
         luminosity = np.zeros((self.height,self.width))
@@ -93,9 +93,11 @@ class CreativeHome(AdaptiveHome):
                 #print ('mutating')
 
         genome = self.encode(luminosity)
-
+        individual = icls(genome)
+        # Time-Awareness, Code Injection into Strategy-Awareness
+        # Time awareness detected a pattern, the mid section is always empty and therefore should remain untouched
         if self.time_aware:
-            individual = self.apply_mid_section_empty_learning(icls(genome))
+            individual = self.apply_mid_section_empty_learning(individual)
 
         return individual
 
@@ -125,6 +127,7 @@ class CreativeHome(AdaptiveHome):
         #print("MUTATE_IND", individual)
         return (individual,)
 
+    # Time-Awareness, Mid section is always empty, make strategy awareness (EA) ignore it
     def apply_mid_section_empty_learning(self, individual):
         #print ("INDIVIDUAL",individual)
         luminosity = self.decode(individual)
@@ -179,7 +182,7 @@ class CreativeHome(AdaptiveHome):
                            self.toolbox.individual)
         self.toolbox.register("mate", tools.cxTwoPoint)
         self.toolbox.register("select", tools.selBest)
-        self.toolbox.register("evaluate", self.fitness)
+        self.toolbox.register("evaluate", self.fitness_ea)
         self.toolbox.register("mutate", self.mutate)
         self.pop = self.toolbox.population(n=100)
 
@@ -214,16 +217,16 @@ class CreativeHome(AdaptiveHome):
 #        return (float(score),)
 
     #------------------ goal awareness stuff starts -----------------
-    def evaluate_luminosity(self, individual):
+    def evaluate_luminosity(self, plan):
         score = 0
         #for selected, bulbs in zip(individual, data):
             #if selected:
         for y in range(self.height): # top left is (X=0,Y=0)
             for x in range(self.width):
 
-                if individual[y*self.width+x]>0:
+                if plan[y,x]>0:
                     #if self.presence_in_radius(1, x, y):
-                    presence_score = self.presence_in_radius2(1, x, y, individual)
+                    presence_score = self.presence_in_radius2(1, x, y, plan)
                     #if self.bulbs[x,y] > -1 and presence_score > 0:
                     #if presence_score > 0:
                     score += presence_score
@@ -233,13 +236,13 @@ class CreativeHome(AdaptiveHome):
         return score
 
 
-    def evaluate_cost(self, individual):
+    def evaluate_cost(self, plan):
         cost_score = 0
         #for selected, bulbs in zip(individual, data):
             #if selected:
         for y in range(self.height): # top left is (X=0,Y=0)
             for x in range(self.width):
-                if individual[y*self.width+x]>0 and self.bulbs[y,x] > -1:
+                if plan[y,x] > 0 and self.bulbs[y,x] > -1:
                     #presence_score = self.presence_in_radius2(1, x, y, individual)
                     #if presence_score is 0:
                     cost_score += int(self.weight['cost'] * self.evaluation_unit)
@@ -247,7 +250,10 @@ class CreativeHome(AdaptiveHome):
 
     # ------- main fitness function -------
 
-    def fitness(self, individual):
+    def fitness_ea(self, individual):
+        return (float(self.fitness(self.decode(individual))),)
+
+    def fitness(self, plan):
         #print('goal based fitness')
         fitness = 0
 
@@ -255,20 +261,20 @@ class CreativeHome(AdaptiveHome):
             for goal_name, goal in self.goals.items():
                 if goal['enabled']:
                     if goal['maximize']:
-                        fitness = fitness + goal['evaluate'](individual)
+                        fitness = fitness + goal['evaluate'](plan)
                     else:
-                        fitness = fitness - goal['evaluate'](individual)
+                        fitness = fitness - goal['evaluate'](plan)
         #else:
         #    fitness += super().fitness(individual)[0]
 
         if self.resource_aware:
-            fitness += self.evaluate_resource(individual)
+            fitness += self.evaluate_resource(plan)
 
         if self.domain_aware and self.context_aware:
-            fitness += self.evaluate_domain_context (individual)
+            fitness += self.evaluate_domain_context (plan)
 
 
-        return (float(fitness),)
+        return fitness
 
 #    def fitness(self, individual):#evalInd4
 #        score = 0
@@ -331,11 +337,11 @@ class CreativeHome(AdaptiveHome):
         return luminosity.flatten()
 
     def decode(self, individual):
-        bulbs = np.zeros((self.height, self.width))
+        plan = np.zeros((self.height, self.width))
         for y in range(self.height): # top left is (X=0,Y=0)
             for x in range(self.width):
-                bulbs[y,x] = individual[y*self.width+x]
-        return bulbs #np.reshape(individual, (-1, self.width))
+                plan[y,x] = individual[y*self.width+x]
+        return plan #np.reshape(individual, (-1, self.width))
 
     #------------------ simulation loop ----------------
     def updatefig(self, *args):
@@ -345,28 +351,37 @@ class CreativeHome(AdaptiveHome):
                 0.5, 0.5, #probabilities
                 1) #iterations
 
-        top = sorted(self.pop, key=lambda x:x.fitness.values[0])[-1]
-        fit = top.fitness.values[0]
+        top_plan = sorted(self.pop, key=lambda x:x.fitness.values[0])[-1]
+        fit = top_plan.fitness.values[0]
         print ('generation:{}, best fitness-: {}'.format(self.steps, fit))
         #print("TOP:", top)
-        self.luminosity = self.decode(top)
-        #print("DRAW:",self.luminosity)
-        self.im.set_data(self.luminosity)
-        #self.im.set_array(self.luminosity)
-        #self.im.set_facecolors(self.luminosity)
+        #self.luminosity = self.decode(top)
+
+        # TODO: In a realistic setting, EA will generate bunch of top plans
+        # that will be pushed to the plans storage and then MAPE will
+        # select the best one at the end of EA. EA could be running in
+        # background in a realistic setup, always pushing new plans to the
+        # plan storage
+        self.plans = [self.decode(top_plan)]
+
+#        #print("DRAW:",self.luminosity)
+#        self.im.set_data(self.luminosity)
+#        #self.im.set_array(self.luminosity)
+#        #self.im.set_facecolors(self.luminosity)
+#
+#
+#        self.luminosity_im.set_data(self.luminosity_extrapolate(self.luminosity))
+#        #im.set_cmap("gray")
+#        #im.update()
+#        self.steps += 1
+#        if self.steps > self.MAX_STEPS:
+#            self.ani.event_source.stop()
+#            plt.grid()
+#            plt.grid()
 
 
-        self.luminosity_im.set_data(self.luminosity_extrapolate(self.luminosity))
-        #im.set_cmap("gray")
-        #im.update()
-        self.steps += 1
-        if self.steps > self.MAX_STEPS:
-            self.ani.event_source.stop()
-            plt.grid()
-            plt.grid()
-
-
-        return self.im, self.luminosity_im
+        return super().updatefig(args)
+        #return self.im, self.luminosity_im
 
     #------- domain and context, access window control, use windows --------------
     def luminosity_extrapolate(self, luminosity):
@@ -396,19 +411,19 @@ class CreativeHome(AdaptiveHome):
         return luminosity
 
     #------- resoruce awareness
-    def evaluate_resource(self, individual):
+    def evaluate_resource(self, plan):
         # probe: luminosity sensors are resources too, may be merge prob-aw into resources. lumisity array is kind of probes
         score = 0
         #for selected, bulbs in zip(individual, data):
             #if selected:
         for y in range(self.height): # top left is (X=0,Y=0)
             for x in range(self.width):
-                if individual[y*self.width+x] > 0 and self.bulbs[y,x] == -1:
+                if plan[y,x] > 0 and self.bulbs[y,x] == -1:
                     score += int(self.weight['penalty_broken_bulb'] * self.evaluation_unit)
         #penalty, -1 makes it reduce the fitness of individuals using broken bulbs
         return -1*score
 
-    def evaluate_domain_context(self, individual):
+    def evaluate_domain_context(self, plan):
         #domain: windows are source of light
         #context: windows can be controlled for light
         # assumption: one quarter of the space can be lit with windows there, left-top here
@@ -416,16 +431,16 @@ class CreativeHome(AdaptiveHome):
         for y in range(self.height): # top left is (X=0,Y=0)
             for x in range(self.width):
                 if x < int(0.5*self.width) and y < int(0.5*self.height): #left-top area
-                    if individual[y*self.width+x]>0:
+                    if plan[y,x] > 0:
                         score += int(self.weight['context'] * self.evaluation_unit)
 
         #penalty for using bulbs in near window lit area
         return -1*score
 
 
-    def run(self):
-        self.ani = animation.FuncAnimation(self.fig, self.updatefig, interval=50, blit=True)
-        plt.show()
+    #def run(self):
+    #    self.ani = animation.FuncAnimation(self.fig, self.updatefig, interval=50, blit=True)
+    #    plt.show()
     #---------------------- awareness ---------------------
     #def awareness_step(self):
         # context: interaction with windows controller
