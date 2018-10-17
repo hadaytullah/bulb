@@ -33,19 +33,21 @@ class CreativeHome(AdaptiveHome):
         self.height_bound = [1, h-1]
         self.evaluation_unit = 10
 
+        #Enables/Disables EA
+        self.strategy_aware = True
+
         self.goal_aware = True # each goal can be seperately turned on/off
-        self.resource_aware = False #awareness of broken bulbs
+        self.resource_aware = True #awareness of broken bulbs
 
         #awarenss of window and its control system
-        self.context_aware = False #window controls system
-        self.domain_aware = False #window gives light
+        self.context_aware = True #window controls system
+        self.domain_aware = True #window gives light
 
-        #it is strategy aware already with the DEAP
-        self.strategy_aware = False
+
 
         # time awareness: Pattern detected --> the mid section is always empty
         # Mid section should be ignore in initial population and mutations, it will lead to more efficient strategy generation. it worked! mutate() and generate_individuals() have been updated to reflect this.
-        self.time_aware = False
+        self.time_aware = True
         self.time_aware_width_bound = [0, self.width]
         self.time_aware_height_bound = [int(self.height*0.35), int(self.width*0.65)]
 
@@ -78,7 +80,8 @@ class CreativeHome(AdaptiveHome):
         self.presence, self.bulbs = self.scenario.corners2(self.width, self.height)
         #self.presence, self.bulbs = self.scenario.extreme(self.width, self.height)
 
-        self.init_deap()
+        if self.strategy_aware:
+            self.init_deap()
         #self.init_figures()
 
     #----- Strategy-Awareness -----
@@ -345,24 +348,25 @@ class CreativeHome(AdaptiveHome):
 
     #------------------ simulation loop ----------------
     def updatefig(self, *args):
-        algorithms.eaMuPlusLambda (
-                self.pop, self.toolbox,
-                400, 100, #parents, children
-                0.5, 0.5, #probabilities
-                1) #iterations
+        if self.strategy_aware:
+            algorithms.eaMuPlusLambda (
+                    self.pop, self.toolbox,
+                    400, 100, #parents, children
+                    0.5, 0.5, #probabilities
+                    1) #iterations
 
-        top_plan = sorted(self.pop, key=lambda x:x.fitness.values[0])[-1]
-        fit = top_plan.fitness.values[0]
-        print ('generation:{}, best fitness-: {}'.format(self.steps, fit))
-        #print("TOP:", top)
-        #self.luminosity = self.decode(top)
+            top_plan = sorted(self.pop, key=lambda x:x.fitness.values[0])[-1]
+            fit = top_plan.fitness.values[0]
+            print ('generation:{}, best fitness-: {}'.format(self.steps, fit))
+            #print("TOP:", top)
+            #self.luminosity = self.decode(top)
 
-        # TODO: In a realistic setting, EA will generate bunch of top plans
-        # that will be pushed to the plans storage and then MAPE will
-        # select the best one at the end of EA. EA could be running in
-        # background in a realistic setup, always pushing new plans to the
-        # plan storage
-        self.plans = [self.decode(top_plan)]
+            # TODO: In a realistic setting, EA will generate bunch of top plans
+            # that will be pushed to the plans storage and then MAPE will
+            # select the best one at the end of EA. EA could be running in
+            # background in a realistic setup, always pushing new plans to the
+            # plan storage
+            self.plans = [self.decode(top_plan)]
 
 #        #print("DRAW:",self.luminosity)
 #        self.im.set_data(self.luminosity)
