@@ -23,6 +23,7 @@ import random
 from scenario import Scenario
 from v2.adaptive_home import AdaptiveHome
 #from v2.home import Home
+import time
 
 class CreativeHome(AdaptiveHome):
 
@@ -88,11 +89,12 @@ class CreativeHome(AdaptiveHome):
 
     def generate_individual(self,icls):
 
-        luminosity = np.zeros((self.height,self.width))
+        #luminosity = np.zeros((self.height,self.width))
+        luminosity = np.random.choice([0., 1.], (self.height, self.width))
 
-        for y in range(self.height_bound[0], self.height_bound[1]):
-            for x in range(self.width_bound[0], self.width_bound[1]):
-                luminosity[y,x] = random.choice([0,1])
+        #for y in range(self.height_bound[0], self.height_bound[1]):
+        #    for x in range(self.width_bound[0], self.width_bound[1]):
+        #        luminosity[y,x] = random.choice([0,1])
                 #print ('mutating')
 
         genome = self.encode(luminosity)
@@ -134,11 +136,16 @@ class CreativeHome(AdaptiveHome):
     def apply_mid_section_empty_learning(self, individual):
         #print ("INDIVIDUAL",individual)
         luminosity = self.decode(individual)
+        hb = self.time_aware_height_bound
+        wb = self.time_aware_width_bound
+        luminosity[hb[0]:hb[1], wb[0]:wb[1]] = 0
+
+        individual[:] = self.encode(luminosity)
         #print("LUMINOSITY", luminosity)
-        for y in range(self.time_aware_height_bound[0], self.time_aware_height_bound[1]):
-            for x in range(self.time_aware_width_bound[0], self.time_aware_width_bound[1]):
-                luminosity[y,x] = 0
-        self.update_individual(individual, luminosity)
+        #for y in range(self.time_aware_height_bound[0], self.time_aware_height_bound[1]):
+        #    for x in range(self.time_aware_width_bound[0], self.time_aware_width_bound[1]):
+        #        luminosity[y,x] = 0
+        #self.update_individual(individual, luminosity)
         #print("UPDATED IND", individual)
         return individual
 
@@ -155,7 +162,7 @@ class CreativeHome(AdaptiveHome):
 
     def init_deap(self):
         creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-        creator.create("Individual", list, fitness=creator.FitnessMax)
+        creator.create("Individual", np.ndarray, fitness=creator.FitnessMax)
         self.steps = 0
         self.MAX_STEPS = 500
         self.toolbox = base.Toolbox()
@@ -224,6 +231,7 @@ class CreativeHome(AdaptiveHome):
         score = 0
         #for selected, bulbs in zip(individual, data):
             #if selected:
+
         for y in range(self.height): # top left is (X=0,Y=0)
             for x in range(self.width):
 
@@ -295,9 +303,9 @@ class CreativeHome(AdaptiveHome):
 #                        score -= 1 #penalty for using a broken bulb
 #        return (float(score),)
 
-
-    def presence_in_radius2 (self, radius, x, y, individual):
+    def presence_in_radius2(self, radius, x, y, individual):
         block = ((y-1, x-1), (y, x-1), (y+1,x-1), (y+1, x), (y+1, x+1), (y, x+1), (y-1, x+1), (y-1, x)) # starts from left top
+        #block = ((y-1, x-1), (y, x-1), (y+1,x-1), (y+1, x), (y+1, x+1), (y, x+1), (y-1, x+1), (y-1, x)) # starts from left top
 
         presence_score = 0
 
@@ -306,10 +314,22 @@ class CreativeHome(AdaptiveHome):
             #print ('+50')
 
         for point in block:
-            if point[0] in range(self.height) and point[1] in range(self.width):
+            if 0 <= point[0] < self.height and 0 <= point[1] < self.width:
                 if self.presence[point[0], point[1]] > 0:
                 #and self.bulbs[point[0],point[1]] < 0: #individual[point[0]*self.width+point[1]] < 1:#someone present in radius and that area is dark
                     presence_score += int(0.30 * self.weight['present'] * self.evaluation_unit)
+
+        #pres_num = np.sum(self.presence[y-1:y+2, x-1:x+2] > 0)
+        #pres2 = self.presence[y, x] > 0
+        #if pres2:
+        #    presence_score2 = (pres_num - 1) * int(0.30 * self.weight['present'] * self.evaluation_unit) + \
+        #                      int(self.weight['present'] * self.evaluation_unit)
+        #else:
+        #    presence_score2 = presence_score2 = pres_num * int(0.30 * self.weight['present'] * self.evaluation_unit)
+
+        #if presence_score != presence_score2:
+        #    print("HJÄLP!")
+        #print(presence_score == presence_score2)
 
         return presence_score
 
@@ -332,24 +352,28 @@ class CreativeHome(AdaptiveHome):
 #        return (individual,)
 
     def update_individual (self, individual, data):
-        for y in range(self.height):
-            for x in range(self.width):
-                individual[y*self.width+x] = data[y,x]
+        individual[:] = data.flatten()
+        #for y in range(self.height):
+        #    for x in range(self.width):
+        #        individual[y*self.width+x] = data[y,x]
 
     def encode(self, luminosity):
         return luminosity.flatten()
 
     def decode(self, individual):
-        plan = np.zeros((self.height, self.width))
-        for y in range(self.height): # top left is (X=0,Y=0)
-            for x in range(self.width):
-                plan[y,x] = individual[y*self.width+x]
-        return plan #np.reshape(individual, (-1, self.width))
+        #plan = np.zeros((self.height, self.width))
+
+        #for y in range(self.height): # top left is (X=0,Y=0)
+        #    for x in range(self.width):
+        #        plan[y,x] = individual[y*self.width+x]
+
+        return individual.reshape((self.width, self.height))
 
     #------------------ simulation loop ----------------
     def updatefig(self, *args):
         if self.strategy_aware:
-            algorithms.eaMuPlusLambda (
+            t = time.monotonic()
+            algorithms.eaMuPlusLambda(
                     self.pop, self.toolbox,
                     400, 100, #parents, children
                     0.5, 0.5, #probabilities
@@ -357,7 +381,8 @@ class CreativeHome(AdaptiveHome):
 
             top_plan = sorted(self.pop, key=lambda x:x.fitness.values[0])[-1]
             fit = top_plan.fitness.values[0]
-            print ('generation:{}, best fitness-: {}'.format(self.steps, fit))
+            t2 = time.monotonic()
+            print('generation:{}, best fitness-: {} ({:.3f}s)'.format(self.steps, fit, t2 - t))
             #print("TOP:", top)
             #self.luminosity = self.decode(top)
 
