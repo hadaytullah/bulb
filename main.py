@@ -1,7 +1,7 @@
 from smart_home import SmartHome
-from v2.control_home import ControlHome
-from v2.creative_home import CreativeHome
-from v2.adaptive_home import AdaptiveHome
+from v3.control_home import ControlHome
+from v3.creative_home import CreativeHome
+from v3.adaptive_home import AdaptiveHome
 import sys
 
 WIDTH = 20
