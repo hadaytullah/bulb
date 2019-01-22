@@ -27,7 +27,7 @@ import time
 
 class CreativeHome(AdaptiveHome):
 
-    def __init__(self, w, h):
+    def __init__(self, w, h, awarenesses=[True, True, True, True, True], pickle_file='stats.pkl', show_ani=True):
         super().__init__(w,h)
         self.scenario = Scenario()
         self.width_bound = [1, w-1]
@@ -35,14 +35,14 @@ class CreativeHome(AdaptiveHome):
         self.evaluation_unit = 10
 
         #Enables/Disables EA
-        self.strategy_aware = True
+        self.strategy_aware = awarenesses[0]
 
-        self.goal_aware = True # each goal can be seperately turned on/off
-        self.resource_aware = True #awareness of broken bulbs
+        self.goal_aware = awarenesses[1] # each goal can be seperately turned on/off
+        self.resource_aware = awarenesses[2] #awareness of broken bulbs
 
         #awarenss of window and its control system
-        self.context_aware = True #window controls system
-        self.domain_aware = True #window gives light
+        self.context_aware = awarenesses[3] #window controls system
+        self.domain_aware = awarenesses[4] #window gives light
 
 
 
@@ -84,6 +84,11 @@ class CreativeHome(AdaptiveHome):
         if self.strategy_aware:
             self.init_deap()
         #self.init_figures()
+
+        self.show_ani = show_ani
+        self.stats = {'fitness': [], 'time': []}
+        self.pickle_file = pickle_file
+        self.starting_time = time.monotonic()
 
     #----- Strategy-Awareness -----
 
@@ -234,8 +239,7 @@ class CreativeHome(AdaptiveHome):
 
         for y in range(self.height): # top left is (X=0,Y=0)
             for x in range(self.width):
-
-                if plan[y,x]>0:
+                if plan[y, x] > 0:
                     #if self.presence_in_radius(1, x, y):
                     presence_score = self.presence_in_radius2(1, x, y, plan)
                     #if self.bulbs[x,y] > -1 and presence_score > 0:
@@ -245,7 +249,6 @@ class CreativeHome(AdaptiveHome):
                         #penalty for using a broken bulb
                     #    score -= int( self.weight['penalty_broken_bulb'] * 1)
         return score
-
 
     def evaluate_cost(self, plan):
         cost_score = 0
@@ -262,7 +265,7 @@ class CreativeHome(AdaptiveHome):
     # ------- main fitness function -------
 
     def fitness_ea(self, individual):
-        return (float(self.fitness(self.decode(individual))),)
+        return float(self.fitness(self.decode(individual))),
 
     def fitness(self, plan):
         #print('goal based fitness')
@@ -282,8 +285,7 @@ class CreativeHome(AdaptiveHome):
             fitness += self.evaluate_resource(plan)
 
         if self.domain_aware and self.context_aware:
-            fitness += self.evaluate_domain_context (plan)
-
+            fitness += self.evaluate_domain_context(plan)
 
         return fitness
 
@@ -304,13 +306,13 @@ class CreativeHome(AdaptiveHome):
 #        return (float(score),)
 
     def presence_in_radius2(self, radius, x, y, individual):
-        block = ((y-1, x-1), (y, x-1), (y+1,x-1), (y+1, x), (y+1, x+1), (y, x+1), (y-1, x+1), (y-1, x)) # starts from left top
-        #block = ((y-1, x-1), (y, x-1), (y+1,x-1), (y+1, x), (y+1, x+1), (y, x+1), (y-1, x+1), (y-1, x)) # starts from left top
+        # starts from left top
+        block = ((y-1, x-1), (y, x-1), (y+1, x-1), (y+1, x), (y+1, x+1), (y, x+1), (y-1, x+1), (y-1, x))
 
         presence_score = 0
 
         if self.presence[y,x] > 0:
-            presence_score += int(self.weight['present'] * self.evaluation_unit) #award for presence under the bulb
+            presence_score += int(self.weight['present'] * self.evaluation_unit)  # award for presence under the bulb
             #print ('+50')
 
         for point in block:
@@ -383,6 +385,10 @@ class CreativeHome(AdaptiveHome):
             fit = top_plan.fitness.values[0]
             t2 = time.monotonic()
             print('generation:{}, best fitness-: {} ({:.3f}s)'.format(self.steps, fit, t2 - t))
+
+            # Add bookkeeping of needed stats
+            self.stats['fitness'].append(fit)
+            self.stats['time'].append(t2 - self.starting_time)
             #print("TOP:", top)
             #self.luminosity = self.decode(top)
 
@@ -417,25 +423,27 @@ class CreativeHome(AdaptiveHome):
 
         if self.domain_aware and self.context_aware:
             #add windows as bulbs at the edges of top-left corner
-            for y in range(int(self.height*0.5)): # top left is (X=0,Y=0)
-                luminosity[y,0] = 1
-                luminosity[y,1] = 1
+            for y in range(int(self.height * 0.5)): # top left is (X=0,Y=0)
+                luminosity[y, 0] = 1
+                luminosity[y, 1] = 1
 
-            for x in range(int(self.width*0.5)):
-                luminosity[0,x] = 1
-                luminosity[1,x] = 1
+            for x in range(int(self.width * 0.5)):
+                luminosity[0, x] = 1
+                luminosity[1, x] = 1
 
         #there must some function doing this interpolation?
-        for y in range(self.height_bound[0], self.height_bound[1]):
-            for x in range(self.width_bound[0], self.width_bound[1]):
-                if self.bulbs[y,x] > -1:
-                    if luminosity[y,x] > 0:
-                        block = ((y-1, x-1), (y, x-1), (y+1,x-1), (y+1, x), (y+1, x+1), (y, x+1), (y-1, x+1), (y-1, x))
+        wb = self.width_bound
+        hb = self.height_bound
+        for y in range(hb[0], hb[1]):
+            for x in range(wb[0], wb[1]):
+                if self.bulbs[y, x] > -1:
+                    if luminosity[y, x] > 0:
+                        block = ((y-1, x-1), (y, x-1), (y+1, x-1), (y+1, x), (y+1, x+1), (y, x+1), (y-1, x+1), (y-1, x))
                         for point in block:
-                            if point[1] in range(self.width_bound[0], self.width_bound[1]) and point[0] in range(self.height_bound[0], self.height_bound[1]):
-                                luminosity[point[0],point[1]] += 0.15*luminosity[y,x]
+                            if wb[0] <= point[1] < wb[1] and hb[0] <= point[0] < hb[1]:
+                                luminosity[point[0], point[1]] += 0.15 * luminosity[y, x]
                 else:
-                    luminosity[y,x] = 0
+                    luminosity[y, x] = 0
 
         return luminosity
 
@@ -447,7 +455,7 @@ class CreativeHome(AdaptiveHome):
             #if selected:
         for y in range(self.height): # top left is (X=0,Y=0)
             for x in range(self.width):
-                if plan[y,x] > 0 and self.bulbs[y,x] == -1:
+                if plan[y, x] > 0 and self.bulbs[y, x] == -1:
                     score += int(self.weight['penalty_broken_bulb'] * self.evaluation_unit)
         #penalty, -1 makes it reduce the fitness of individuals using broken bulbs
         return -1*score
@@ -465,6 +473,41 @@ class CreativeHome(AdaptiveHome):
 
         #penalty for using bulbs in near window lit area
         return -1*score
+
+    def hof_eq(self, a1, a2):
+        if np.any(a1 != a2):
+            return False
+        return True
+
+    def run(self):
+        if self.show_ani:
+            super().run()
+        else:
+            hall_of_fame = tools.HallOfFame(10, self.hof_eq)
+            stats = tools.Statistics(key=lambda ind: ind.fitness.values[0])
+            stats.register('max', np.max)
+            stats.register('avg', np.mean)
+            stats.register("std", np.std)
+            log_book = algorithms.eaMuPlusLambda(
+                self.pop, self.toolbox,
+                400, 100,  #parents, children
+                0.5, 0.5,  #probabilities
+                500,
+                stats=stats,
+                halloffame=hall_of_fame,
+                verbose=True)  #iterations
+
+            #print(log_book)
+            top_plan = hall_of_fame[0]
+            fit = top_plan.fitness.values[0]
+            t2 = time.monotonic()
+            print(fit, t2 - self.starting_time)
+            self.stats['fitness'] = fit
+            self.stats['time'] = t2 - self.starting_time
+            self.stats['logbook'] = log_book
+
+
+
 
 
     #def run(self):
