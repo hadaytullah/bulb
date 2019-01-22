@@ -94,12 +94,13 @@ class CreativeHome(AdaptiveHome):
 
     def generate_individual(self,icls):
 
-        #luminosity = np.zeros((self.height,self.width))
-        luminosity = np.random.choice([0., 1.], (self.height, self.width))
+        luminosity = np.zeros((self.height,self.width))
+        #luminosity = np.random.choice([0., 1.], (self.height, self.width))
 
-        #for y in range(self.height_bound[0], self.height_bound[1]):
-        #    for x in range(self.width_bound[0], self.width_bound[1]):
-        #        luminosity[y,x] = random.choice([0,1])
+        for y in range(self.height_bound[0], self.height_bound[1]):
+            for x in range(self.width_bound[0], self.width_bound[1]):
+                if(self.bulbs[y,x] > -1):
+                  luminosity[y,x] = random.choice([0,1])
                 #print ('mutating')
 
         genome = self.encode(luminosity)
