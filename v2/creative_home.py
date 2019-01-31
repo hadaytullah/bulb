@@ -27,7 +27,7 @@ import time
 
 class CreativeHome(AdaptiveHome):
 
-    def __init__(self, w, h, awarenesses=[True, True, True, True, True], pickle_file='stats.pkl', show_ani=True):
+    def __init__(self, w, h, awarenesses=[True, True, True, True, True, True], pickle_file='stats.pkl', show_ani=True):
         super().__init__(w,h)
         self.scenario = Scenario()
         self.width_bound = [1, w-1]
@@ -35,7 +35,7 @@ class CreativeHome(AdaptiveHome):
         self.evaluation_unit = 10
 
         #Enables/Disables EA
-        self.strategy_aware = awarenesses[0]
+        #self.strategy_aware = awarenesses[0]
 
         self.goal_aware = awarenesses[1] # each goal can be seperately turned on/off
         self.resource_aware = awarenesses[2] #awareness of broken bulbs
@@ -48,7 +48,7 @@ class CreativeHome(AdaptiveHome):
 
         # time awareness: Pattern detected --> the mid section is always empty
         # Mid section should be ignore in initial population and mutations, it will lead to more efficient strategy generation. it worked! mutate() and generate_individuals() have been updated to reflect this.
-        self.time_aware = True
+        self.time_aware = awarenesses[5]
         self.time_aware_width_bound = [0, self.width]
         self.time_aware_height_bound = [int(self.height*0.35), int(self.width*0.65)]
 
@@ -81,8 +81,8 @@ class CreativeHome(AdaptiveHome):
         self.presence, self.bulbs = self.scenario.corners2(self.width, self.height)
         #self.presence, self.bulbs = self.scenario.extreme(self.width, self.height)
 
-        if self.strategy_aware:
-            self.init_deap()
+        #if self.strategy_aware:
+        self.init_deap()
         #self.init_figures()
 
         self.show_ani = show_ani
@@ -114,7 +114,6 @@ class CreativeHome(AdaptiveHome):
 
     def mutate(self, individual):
         #print('Mutating')
-        #print('Mutating')
         luminosity = self.decode(individual)
 
         for i in range(self.width):
@@ -126,12 +125,6 @@ class CreativeHome(AdaptiveHome):
 
         #luminosity = self.encode (luminosity)
         self.update_individual(individual, luminosity)
-        #for i in range(self.width):
-        #    individual[random.randint(0,len(individual)-1)] = random.choice([0,1])
-        #return (individual,)
-
-        #individual = super().mutate(individual)[0]
-        #print("Before Mutate ", individual)
         if self.time_aware:
             individual = self.apply_mid_section_empty_learning(individual)
 
@@ -147,30 +140,14 @@ class CreativeHome(AdaptiveHome):
         luminosity[hb[0]:hb[1], wb[0]:wb[1]] = 0
 
         individual[:] = self.encode(luminosity)
-        #print("LUMINOSITY", luminosity)
-        #for y in range(self.time_aware_height_bound[0], self.time_aware_height_bound[1]):
-        #    for x in range(self.time_aware_width_bound[0], self.time_aware_width_bound[1]):
-        #        luminosity[y,x] = 0
-        #self.update_individual(individual, luminosity)
-        #print("UPDATED IND", individual)
         return individual
 
-#    def generate_individual(self,icls):
-#        luminosity = np.zeros((self.height,self.width))
-#
-#        for y in range(self.height_bound[0], self.height_bound[1]):
-#            for x in range(self.width_bound[0], self.width_bound[1]):
-#                luminosity[y,x] = random.choice([0,1])
-#                #print ('mutating')
-#
-#        genome = self.encode(luminosity)
-#        return icls(genome)
 
     def init_deap(self):
         creator.create("FitnessMax", base.Fitness, weights=(1.0,))
         creator.create("Individual", np.ndarray, fitness=creator.FitnessMax)
         self.steps = 0
-        self.MAX_STEPS = 500
+        self.MAX_STEPS = 800
         self.toolbox = base.Toolbox()
 
         self.toolbox.register(
@@ -202,35 +179,6 @@ class CreativeHome(AdaptiveHome):
         self.toolbox.register("mutate", self.mutate)
         self.pop = self.toolbox.population(n=100)
 
-#    def fitness_(self, individual, data):
-#        print (data)
-#        print (individual)
-#        match = 0
-#        #for selected, bulbs in zip(individual, data):
-#            #if selected:
-#        for x in range(self.width):
-#            for y in range(self.height):
-#                if self.presence[x,y]>0 and individual[x,y]>0:
-#                    match += 1
-#        match_percentage = match / self.width * self.height
-#        return match_percentage
-
-
-#    def fitness(self, individual):#evalInd4
-#        score = 0
-#        #for selected, bulbs in zip(individual, data):
-#            #if selected:
-#        for y in range(self.height): # top left is (X=0,Y=0)
-#            for x in range(self.width):
-#
-#                if individual[y*self.width+x]>0:
-#                    #if self.presence_in_radius(1, x, y):
-#                    presence_score = self.presence_in_radius2(1, x, y, individual)
-#                    if self.bulbs[x,y] > -1 and presence_score > 0:
-#                        score += presence_score
-#                    else:
-#                        score -= 1 #penalty for using a broken bulb
-#        return (float(score),)
 
     #------------------ goal awareness stuff starts -----------------
     def evaluate_luminosity(self, plan):
@@ -290,22 +238,6 @@ class CreativeHome(AdaptiveHome):
 
         return fitness
 
-#    def fitness(self, individual):#evalInd4
-#        score = 0
-#        #for selected, bulbs in zip(individual, data):
-#            #if selected:
-#        for y in range(self.height): # top left is (X=0,Y=0)
-#            for x in range(self.width):
-#
-#                if individual[y*self.width+x]>0:
-#                    #if self.presence_in_radius(1, x, y):
-#                    presence_score = self.presence_in_radius2(1, x, y, individual)
-#                    if self.bulbs[y,x] > -1 and presence_score > 0:
-#                        score += presence_score
-#                    else:
-#                        score -= 1 #penalty for using a broken bulb
-#        return (float(score),)
-
     def presence_in_radius2(self, radius, x, y, individual):
         # starts from left top
         block = ((y-1, x-1), (y, x-1), (y+1, x-1), (y+1, x), (y+1, x+1), (y, x+1), (y-1, x+1), (y-1, x))
@@ -337,84 +269,42 @@ class CreativeHome(AdaptiveHome):
         return presence_score
 
 
-#    def mutate(self, individual):
-#        #print('Mutating')
-#        luminosity = self.decode(individual)
-#
-#        for i in range(self.width):
-#            x = random.randint(self.width_bound[0], self.width_bound[1])
-#            y = random.randint(self.height_bound[0], self.height_bound[1])
-#
-#            if(self.bulbs[y,x] > -1):
-#                luminosity[y,x] = random.choice([0,1])
-#
-#        #luminosity = self.encode (luminosity)
-#        self.update_individual(individual, luminosity)
-#        #for i in range(self.width):
-#        #    individual[random.randint(0,len(individual)-1)] = random.choice([0,1])
-#        return (individual,)
-
     def update_individual (self, individual, data):
         individual[:] = data.flatten()
-        #for y in range(self.height):
-        #    for x in range(self.width):
-        #        individual[y*self.width+x] = data[y,x]
 
     def encode(self, luminosity):
         return luminosity.flatten()
 
     def decode(self, individual):
-        #plan = np.zeros((self.height, self.width))
-
-        #for y in range(self.height): # top left is (X=0,Y=0)
-        #    for x in range(self.width):
-        #        plan[y,x] = individual[y*self.width+x]
-
         return individual.reshape((self.width, self.height))
 
     #------------------ simulation loop ----------------
     def updatefig(self, *args):
-        if self.strategy_aware:
-            t = time.monotonic()
-            algorithms.eaMuPlusLambda(
-                    self.pop, self.toolbox,
-                    400, 100, #parents, children
-                    0.5, 0.5, #probabilities
-                    1) #iterations
+        #if self.strategy_aware:
+        t = time.monotonic()
+        algorithms.eaMuPlusLambda(
+                self.pop, self.toolbox,
+                400, 100, #parents, children
+                0.5, 0.5, #probabilities
+                1) #iterations
 
-            top_plan = sorted(self.pop, key=lambda x:x.fitness.values[0])[-1]
-            fit = top_plan.fitness.values[0]
-            t2 = time.monotonic()
-            print('generation:{}, best fitness-: {} ({:.3f}s)'.format(self.steps, fit, t2 - t))
+        top_plan = sorted(self.pop, key=lambda x:x.fitness.values[0])[-1]
+        fit = top_plan.fitness.values[0]
+        t2 = time.monotonic()
+        print('generation:{}, best fitness-: {}, deap_time ({:.3f}s), total_time: ({:.3f}s)'.format(self.steps, fit, t2 - t, t2-self.t_start))
 
-            # Add bookkeeping of needed stats
-            self.stats['fitness'].append(fit)
-            self.stats['time'].append(t2 - self.starting_time)
-            #print("TOP:", top)
-            #self.luminosity = self.decode(top)
+        # Add bookkeeping of needed stats
+        self.stats['fitness'].append(fit)
+        self.stats['time'].append(t2 - self.starting_time)
+        #print("TOP:", top)
+        #self.luminosity = self.decode(top)
 
-            # TODO: In a realistic setting, EA will generate bunch of top plans
-            # that will be pushed to the plans storage and then MAPE will
-            # select the best one at the end of EA. EA could be running in
-            # background in a realistic setup, always pushing new plans to the
-            # plan storage
-            self.plans = [self.decode(top_plan)]
-
-#        #print("DRAW:",self.luminosity)
-#        self.im.set_data(self.luminosity)
-#        #self.im.set_array(self.luminosity)
-#        #self.im.set_facecolors(self.luminosity)
-#
-#
-#        self.luminosity_im.set_data(self.luminosity_extrapolate(self.luminosity))
-#        #im.set_cmap("gray")
-#        #im.update()
-#        self.steps += 1
-#        if self.steps > self.MAX_STEPS:
-#            self.ani.event_source.stop()
-#            plt.grid()
-#            plt.grid()
-
+        # TODO: In a realistic setting, EA will generate bunch of top plans
+        # that will be pushed to the plans storage and then MAPE will
+        # select the best one at the end of EA. EA could be running in
+        # background in a realistic setup, always pushing new plans to the
+        # plan storage
+        self.plans = [self.decode(top_plan)]
 
         return super().updatefig(args)
         #return self.im, self.luminosity_im
@@ -482,6 +372,7 @@ class CreativeHome(AdaptiveHome):
 
     def run(self):
         if self.show_ani:
+            self.t_start = time.monotonic()
             super().run()
         else:
             hall_of_fame = tools.HallOfFame(10, self.hof_eq)
@@ -506,49 +397,3 @@ class CreativeHome(AdaptiveHome):
             self.stats['fitness'] = fit
             self.stats['time'] = t2 - self.starting_time
             self.stats['logbook'] = log_book
-
-
-
-
-
-    #def run(self):
-    #    self.ani = animation.FuncAnimation(self.fig, self.updatefig, interval=50, blit=True)
-    #    plt.show()
-    #---------------------- awareness ---------------------
-    #def awareness_step(self):
-        # context: interaction with windows controller
-        # resource: luminosity sensors, bulbs broken/working, bulb intensity high/low = radius
-        # domain: windows are source of light
-        # goal : power saving + luminosity
-        # probe: luminosity sensors
-        # strategy,
-        # enactor
-        # time
-        # hypothesis
-
-
-
-#class CreativeHome_(object):
-#    def __init__(self, width, height):
-#        self.wrapped_class = SmartHome(width, height)
-#
-#    def __getattr__(self,attr):
-#        orig_attr = self.wrapped_class.__getattribute__(attr)
-#        if callable(orig_attr):
-#            def hooked(*args, **kwargs):
-#                self.pre()
-#                result = orig_attr(*args, **kwargs)
-#                # prevent wrapped_class from becoming unwrapped
-#                if result == self.wrapped_class:
-#                    return self
-#                self.post()
-#                return result
-#            return hooked
-#        else:
-#            return orig_attr
-#
-#    def pre(self):
-#        print (">> pre")
-#
-#    def post(self):
-#        print ("<< post")

@@ -11,9 +11,9 @@ HEIGHT = 20
 
 # each config is 2-tuple: (name, used awarenesses), where used awarenesses is 5-tuple of booleans in order:
 # strategy, goal, resource, context, domain
-awareness_configs = [('all', [True, True, True, True, True])]
+awareness_configs = [('goal-resource',[True, True, True, False, False, False]),('goal-resource-context-domain', [True, True, True, True, True, False]), ('goal-resource-context-domain-time', [True, True, True, True, True, True])]
 # How many times each configs run is repeated
-runs_per_config = 2
+runs_per_config = 5
 # Collect stats from all runs of all configs
 stats = {}
 
